@@ -204,7 +204,7 @@ class BootPreparationFixtureTests(unittest.TestCase):
             (self.root / name).touch()
         (self.root / "authorized").write_text(str(self.root / "disk") + "|fixture\n")
         self.config = self.root / "install.conf"
-        self.config.write_text("LAYOUT=loki\n")
+        self.config.write_text("LAYOUT=loki\nHOSTNAME=loki\n")
         (self.root / "select-disk.sh").write_text("#!/bin/sh\n[ \"$1\" = --validate-authorized ]\n")
         (self.target / "etc/fstab").write_text("UUID=root / btrfs defaults 0 0\nUUID=esp /boot/efi vfat defaults 0 2\n")
         self.mounts = self.root / "mounts"
@@ -308,7 +308,7 @@ class BootPreparationFixtureTests(unittest.TestCase):
         self.assertFalse(any("dpkg-divert" in event for event in self.events()))
 
     def test_thor_only_validates_its_two_boot_partitions(self):
-        self.config.write_text("LAYOUT=thor\n")
+        self.config.write_text("LAYOUT=thor\nHOSTNAME=thor\n")
         self.mounts.write_text(f"{self.root}/esp-device {self.target}/boot/efi vfat rw 0 0\n"
                                f"{self.root}/boot-device {self.target}/boot ext4 rw 0 0\n")
         result = self.run_hook()
