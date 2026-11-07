@@ -1,14 +1,26 @@
 #!/bin/sh
+# shellcheck disable=SC3028
 # d-i post-base-installer hook, BEFORE kernel installation. No desktop setup.
 set -eu
+umask 077
 # shellcheck source=/dev/null
 . /xc0/install.conf
+exec >> /target/var/log/xc0-boot-prepare.log 2>&1
+printf 'xc0 boot preparation started: host=%s layout=%s\n' "$HOSTNAME" "$LAYOUT"
+boot_prepare_exit() {
+    result=$?
+    trap - EXIT
+    printf 'xc0 boot preparation exit: status=%s\n' "$result"
+    exit "$result"
+}
+trap boot_prepare_exit EXIT
 case "$LAYOUT" in
     thor) esp_mount=/target/boot/efi ;;
     loki) esp_mount=/target/boot/efi ;;
     *) exit 1 ;;
 esac
 sh -eu /xc0/select-disk.sh --validate-authorized
+printf 'authorized OS disk validated\n'
 disk=$(cut -d'|' -f1 /tmp/xc0-authorized)
 [ -b "$disk" ]
 esp=$(awk -v p="$esp_mount" '$2 == p && $3 == "vfat" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
@@ -20,9 +32,11 @@ check_partition() {
 }
 [ "$(in-target --pass-stdout blkid -p -s PTTYPE -o value "$disk")" = gpt ]
 check_partition "$esp"
+printf 'GPT and exact 1 GiB ESP validated: %s\n' "$esp"
 if [ "$LAYOUT" = thor ]; then
     boot=$(awk '$2 == "/target/boot" && $3 == "ext4" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
     check_partition "$boot"
+    printf 'Thor /boot partition validated: %s\n' "$boot"
     exit 0
 fi
 # partman-efi 110 always writes its ESP fstab entry at /boot/efi, even when the
@@ -32,13 +46,16 @@ umount /target/boot/efi
 [ -z "$(ls -A /target/boot/efi)" ]
 rmdir /target/boot/efi
 [ -z "$(ls -A /target/boot)" ]
+printf 'Loki ESP mountpoint and /boot are empty after unmount\n'
 mount -t vfat -o umask=0077 "$esp" /target/boot
+printf 'Loki ESP remounted at /boot\n'
 # This is the real firmware loader directory, NOT a /boot/efi mount/alias.
 # d-i checks for that case-insensitive path before choosing grub-efi over grub-pc.
 mkdir -p /target/boot/EFI
 awk '$2 == "/boot/efi" {$2 = "/boot"} {print}' /target/etc/fstab > /target/etc/fstab.xc0-new
 chmod 0644 /target/etc/fstab.xc0-new
 mv /target/etc/fstab.xc0-new /target/etc/fstab
+printf 'Loki fstab updated for ESP at /boot\n'
 # FAT cannot store kernel-image symlinks.
 if [ -f /target/etc/kernel-img.conf ]; then
     sed '/^[[:space:]]*link_in_boot[[:space:]]*=/d' /target/etc/kernel-img.conf > /target/etc/kernel-img.conf.xc0-new
@@ -52,5 +69,6 @@ mv /target/etc/kernel-img.conf.xc0-new /target/etc/kernel-img.conf
 # /boot. The diversion also covers future signed GRUB/shim package updates.
 in-target dpkg-divert --local --add --rename \
     --divert /usr/sbin/grub-install.xc0-real /usr/sbin/grub-install
+printf 'Loki signed grub-install diversion installed\n'
 cp /xc0/grub-install-loki.sh /target/usr/sbin/grub-install
 chmod 0755 /target/usr/sbin/grub-install

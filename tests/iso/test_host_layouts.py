@@ -194,7 +194,7 @@ class BootPreparationFixtureTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.target = self.root / "target"
-        for directory in ("boot", "boot/efi", "etc", "usr/sbin"):
+        for directory in ("boot", "boot/efi", "etc", "usr/sbin", "var/log"):
             (self.target / directory).mkdir(parents=True)
         self.bin = self.root / "bin"
         self.bin.mkdir()
@@ -282,6 +282,8 @@ class BootPreparationFixtureTests(unittest.TestCase):
                 self.assertFalse((self.target / "boot/EFI").exists())
                 self.assertFalse((self.target / "usr/sbin/grub-install").exists())
                 self.assertFalse((self.target / "etc/kernel-img.conf").exists())
+                self.assertIn("xc0 boot preparation exit: status=1",
+                              (self.target / "var/log/xc0-boot-prepare.log").read_text())
                 (self.root / "commands.jsonl").unlink()
 
     def test_loki_uses_existing_esp_at_boot_and_installs_persistent_signed_grub_route(self):
@@ -294,6 +296,10 @@ class BootPreparationFixtureTests(unittest.TestCase):
         self.assertTrue(any("dpkg-divert" in event for event in self.events()))
         self.assertEqual([event[0] for event in self.events() if event[0] in ("mount", "umount")],
                          ["umount", "mount"])
+        log = (self.target / "var/log/xc0-boot-prepare.log").read_text()
+        self.assertIn("Loki ESP remounted at /boot", log)
+        self.assertIn("Loki signed grub-install diversion installed", log)
+        self.assertIn("xc0 boot preparation exit: status=0", log)
 
     def test_loki_refuses_unexpected_boot_contents_before_grub_changes(self):
         (self.target / "boot/unexpected-kernel").touch()
