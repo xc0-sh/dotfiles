@@ -1,0 +1,8 @@
+# Tools with no Debian package (checked on trixie, trixie-backports and sid, 2026-11-07).
+# Stage 2 installs these from upstream releases, pinned by version and checksum.
+# Versions are chosen when bootstrap.sh installs them (pin-version), not here.
+awww         # wallpaper daemon (formerly swww)
+satty        # screenshot annotation
+hyprshot     # screenshot helper
+matugen      # colour scheme generator
+nerd-fonts   # JetBrainsMono Nerd Font, Symbols Nerd Font

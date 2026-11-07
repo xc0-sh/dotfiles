@@ -1,0 +1,86 @@
+# Desktop packages for every profile, Debian names.
+# Checked with `apt-cache policy` against trixie + trixie-backports and sid on 2026-11-07.
+# On the stable profiles the Hyprland stack comes from trixie-backports (see hyprland.txt).
+
+# base tools
+wget
+curl
+git
+rsync
+stow
+unzip
+tar
+jq
+vim
+neovim
+inotify-tools
+acl
+zsh
+fish
+fzf
+eza
+htop
+btop
+fastfetch
+figlet
+lazygit
+cargo
+xdg-user-dirs
+
+# storage and devices
+udisks2
+udiskie
+gvfs
+gvfs-backends
+blueman
+brightnessctl
+power-profiles-daemon
+network-manager-applet
+nm-connection-editor
+
+# desktop
+kitty
+waybar
+rofi
+sway-notification-center
+nwg-look
+nwg-displays
+pavucontrol
+qt6ct
+qt6-wayland
+qtwayland5
+qt6-svg-plugins
+qt6-virtualkeyboard-plugin
+gnome-themes-extra
+breeze-cursor-theme
+mate-polkit
+libnotify-bin
+libsecret-1-0
+imagemagick
+nautilus
+tumbler
+loupe
+gnome-text-editor
+vlc
+firefox-esr
+flatpak
+
+# screenshots and clipboard
+grim
+slurp
+wl-clipboard
+cliphist
+tesseract-ocr
+tesseract-ocr-eng
+
+# python helpers used by the config
+python3-pip
+pipx
+python3-gi
+python3-screeninfo
+
+# fonts
+fonts-firacode
+fonts-jetbrains-mono
+fonts-font-awesome
+fonts-noto-color-emoji
