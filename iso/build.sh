@@ -40,7 +40,7 @@ umask 077
 mkdir -p "$work/root/xc0" "$out_dir"
 
 # preseed: profile values, then secrets appended (never substituted into the template)
-sed -e "s/@@SUITE@@/$suite/" -e "s/@@SERVICES@@/$services/" "$here/preseed/base.cfg" > "$work/root/preseed.cfg"
+sed -e "s/@@SERVICES@@/$services/" "$here/preseed/base.cfg" > "$work/root/preseed.cfg"
 {
     echo "### appended by build.sh from $secrets"
     printf 'd-i partman-crypto/passphrase password %s\n' "$(cat "$secrets/luks-passphrase")"
@@ -57,7 +57,7 @@ sed -e "s/@@SUITE@@/$suite/" -e "s/@@SERVICES@@/$services/" "$here/preseed/base.
 } >> "$work/root/preseed.cfg"
 
 cp "$here/preseed/early.sh" "$here/preseed/select-disk.sh" "$work/root/xc0/"
-sed "s/@@ISO_ID@@/$iso_id/" "$here/preseed/late.sh" > "$work/root/xc0/late.sh"
+sed -e "s/@@ISO_ID@@/$iso_id/" -e "s/@@SUITE@@/$suite/" "$here/preseed/late.sh" > "$work/root/xc0/late.sh"
 
 # initrd: original + an appended cpio carrying /preseed.cfg and /xc0
 xorriso -osirrox on -indev "$src" \

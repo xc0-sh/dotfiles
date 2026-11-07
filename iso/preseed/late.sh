@@ -33,7 +33,23 @@ else
     log "git clone failed"
 fi
 
+# Testing profile: the base came from the trixie CD; move to testing now.
+suite=@@SUITE@@
+if [ "$suite" = "testing" ]; then
+    printf '%s\n' \
+        "deb http://deb.debian.org/debian testing main contrib non-free non-free-firmware" \
+        "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" \
+        > /etc/apt/sources.list
+    if apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get -y -q \
+            -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade; then
+        log "upgraded to testing"
+    else
+        log "upgrade to testing FAILED"
+    fi
+fi
+
 {
+    echo "suite=$suite"
     echo "installed=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "hostname=$(cat /etc/hostname)"
     echo "iso=@@ISO_ID@@"
