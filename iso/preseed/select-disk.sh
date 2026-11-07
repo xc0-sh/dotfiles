@@ -69,7 +69,9 @@ for dev in "$sysfs"/block/*; do
     case "$sectors" in ''|*[!0-9]*) continue ;; esac
     if [ "$TARGET_MODE" = model-confirm ]; then
         case "$model" in *"$TARGET_MODEL"*) : ;; *) continue ;; esac
-        [ "$sectors" -ge 1750000000 ] && [ "$sectors" -le 2100000000 ] || continue
+        if [ "$sectors" -lt 1750000000 ] || [ "$sectors" -gt 2100000000 ]; then
+            continue
+        fi
     else
         [ "$sectors" -ge 33554432 ] || continue
         [ "$serial" = "$TARGET_SERIAL" ] || continue

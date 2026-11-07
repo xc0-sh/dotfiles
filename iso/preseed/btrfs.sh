@@ -69,7 +69,9 @@ record=$(awk '$5 == "/target" {for (i=7; i<=NF; i++) if ($i == "-") {print $(i+1
 IFS=' ' read -r fs root_device source_root <<EOF
 $record
 EOF
-[ "$fs" = btrfs ] && [ -b "$root_device" ] || die 'target root is not Btrfs'
+if [ "$fs" != btrfs ] || [ ! -b "$root_device" ]; then
+    die 'target root is not Btrfs'
+fi
 [ "$(readlink -f "$root_device")" = "$(readlink -f /dev/mapper/xcloud_vg-root)" ] || die 'unexpected root LV'
 case "$source_root" in /|/@rootfs|/@) : ;; *) die 'unexpected installed root subvolume' ;; esac
 [ "$source_root" != /@ ] || die 'layout already reshaped; refusing a second migration'

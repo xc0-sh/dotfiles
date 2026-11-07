@@ -82,16 +82,18 @@ case "$serial" in *[!a-zA-Z0-9_.:-]*) echo 'unsupported serial characters' >&2; 
 if [ "$target_mode" != model-confirm ]; then
     case "$dmi" in *'
 '*) echo 'unsupported DMI characters' >&2; exit 2 ;; esac
-    printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '^[a-zA-Z0-9 ._:()+/-]+$' &&
-        printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '[a-zA-Z0-9]' && [ "${#dmi}" -le 256 ] || {
+    if ! printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '^[a-zA-Z0-9 ._:()+/-]+$' ||
+        ! printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '[a-zA-Z0-9]' || [ "${#dmi}" -gt 256 ]; then
         echo 'unsupported DMI characters' >&2; exit 2;
-    }
+    fi
 else
     for value in "$model" "$protected"; do
         case "$value" in *'
 '*) echo 'unsupported model string' >&2; exit 2 ;; esac
-        printf '%s\n' "$value" | LC_ALL=C grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9 ._:+/-]*[a-zA-Z0-9])?$' &&
-            [ "${#value}" -le 128 ] || { echo 'unsupported model string' >&2; exit 2; }
+        if ! printf '%s\n' "$value" | LC_ALL=C grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9 ._:+/-]*[a-zA-Z0-9])?$' ||
+            [ "${#value}" -gt 128 ]; then
+            echo 'unsupported model string' >&2; exit 2
+        fi
     done
     [ "$model" != "$protected" ] || { echo 'target and protected models must differ' >&2; exit 2; }
 fi

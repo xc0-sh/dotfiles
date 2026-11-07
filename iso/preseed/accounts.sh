@@ -27,8 +27,10 @@ check_collision() {
     entry=$(getent group "$3" || :)
     [ -z "$entry" ] || [ "${entry%%:*}" = "$1" ] || die "GID collision for $1"
     if [ -e "/home/$1" ] || [ -L "/home/$1" ]; then
-        [ -d "/home/$1" ] && [ ! -L "/home/$1" ] &&
-            [ "$(stat -c '%u:%g' "/home/$1")" = "$2:$3" ] || die "wrong existing home owner: $1"
+        if [ ! -d "/home/$1" ] || [ -L "/home/$1" ] ||
+            [ "$(stat -c '%u:%g' "/home/$1")" != "$2:$3" ]; then
+            die "wrong existing home owner: $1"
+        fi
     fi
 }
 
@@ -36,10 +38,14 @@ assert_account() {
     check_collision "$1" "$2" "$3"
     entry=$(getent passwd "$1")
     [ "$(printf '%s\n' "$entry" | cut -d: -f6-7)" = "/home/$1:/bin/bash" ] || die "wrong home/shell: $1"
-    [ "$(id -u "$1")" = "$2" ] && [ "$(id -g "$1")" = "$3" ] || die "wrong numeric identity: $1"
+    if [ "$(id -u "$1")" != "$2" ] || [ "$(id -g "$1")" != "$3" ]; then
+        die "wrong numeric identity: $1"
+    fi
     [ "$(getent group "$1" | cut -d: -f3)" = "$3" ] || die "missing named primary group: $1"
-    [ -d "/home/$1" ] && [ ! -L "/home/$1" ] &&
-        [ "$(stat -c '%u:%g' "/home/$1")" = "$2:$3" ] || die "wrong home: $1"
+    if [ ! -d "/home/$1" ] || [ -L "/home/$1" ] ||
+        [ "$(stat -c '%u:%g' "/home/$1")" != "$2:$3" ]; then
+        die "wrong home: $1"
+    fi
     mismatch=$(find "/home/$1" -xdev \( ! -uid "$2" -o ! -gid "$3" \) -print -quit)
     [ -z "$mismatch" ] || die "unexpected ownership inside home: $1"
     id -nG "$1" | grep -qw sudo || die "missing authenticated sudo group: $1"

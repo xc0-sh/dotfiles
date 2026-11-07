@@ -166,9 +166,9 @@ except (OSError, ValueError) as error:
     sys.exit(str(error))
 PY
 for source in "$here/ventoy.json" "$here/ventoy_grub.cfg"; do
-    [ -f "$source" ] && [ ! -L "$source" ] || {
-        echo "not a regular media config: $source" >&2; exit 2;
-    }
+    if [ ! -f "$source" ] || [ -L "$source" ]; then
+        echo "not a regular media config: $source" >&2; exit 2
+    fi
 done
 python3 -m json.tool "$here/ventoy.json" >/dev/null
 
