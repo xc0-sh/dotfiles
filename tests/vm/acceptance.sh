@@ -24,6 +24,9 @@ lsblk -nr -o TYPE | grep -qx crypt
 pass 'encrypted root/LVM boot'
 [ "$(timedatectl show -p Timezone --value)" = Europe/Oslo ]
 pass 'timezone Europe/Oslo'
+grep -Eq '^XKBLAYOUT="?no"?$' /etc/default/keyboard
+grep -Eq '^LANG="?en_US\.UTF-8"?$' /etc/default/locale
+pass 'Norwegian keyboard and English OS locale (en_US.UTF-8)'
 if [ "$profile" = stable ]; then
     # shellcheck disable=SC1091
     . /etc/os-release

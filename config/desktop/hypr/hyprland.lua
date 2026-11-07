@@ -8,7 +8,7 @@ hl.config({
     animations = { enabled = false },
     dwindle = { preserve_split = true },
     input = {
-        kb_layout = os.getenv("XKB_DEFAULT_LAYOUT") or "us",
+        kb_layout = os.getenv("XKB_DEFAULT_LAYOUT") or "no",
         kb_variant = os.getenv("XKB_DEFAULT_VARIANT") or "",
         kb_model = os.getenv("XKB_DEFAULT_MODEL") or "pc105",
         kb_options = os.getenv("XKB_DEFAULT_OPTIONS") or "",

@@ -5,7 +5,7 @@ if [ -r /etc/default/keyboard ]; then
     # shellcheck disable=SC1091
     . /etc/default/keyboard
 fi
-export XKB_DEFAULT_LAYOUT="${XKBLAYOUT:-us}"
+export XKB_DEFAULT_LAYOUT="${XKBLAYOUT:-no}"
 export XKB_DEFAULT_VARIANT="${XKBVARIANT:-}"
 export XKB_DEFAULT_MODEL="${XKBMODEL:-pc105}"
 export XKB_DEFAULT_OPTIONS="${XKBOPTIONS:-}"
