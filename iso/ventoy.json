@@ -1,0 +1,7 @@
+{
+    "control": [
+        { "VTOY_MENU_TIMEOUT": "5" },
+        { "VTOY_DEFAULT_IMAGE": "/xc0/xc0-installer.iso" },
+        { "VTOY_SECONDARY_TIMEOUT": "3" }
+    ]
+}
