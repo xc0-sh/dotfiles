@@ -1,0 +1,11 @@
+#!/bin/sh
+# UWSM's environment-preparation phase, sourced as the login user.
+if [ -r /etc/default/keyboard ]; then
+    # Standard Debian shell-assignment file, controlled by root.
+    # shellcheck disable=SC1091
+    . /etc/default/keyboard
+fi
+export XKB_DEFAULT_LAYOUT="${XKBLAYOUT:-us}"
+export XKB_DEFAULT_VARIANT="${XKBVARIANT:-}"
+export XKB_DEFAULT_MODEL="${XKBMODEL:-pc105}"
+export XKB_DEFAULT_OPTIONS="${XKBOPTIONS:-}"

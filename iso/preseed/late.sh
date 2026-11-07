@@ -1,57 +1,67 @@
 #!/bin/sh
-# preseed/late_command, run inside the installed system (in-target, as root).
-# Failures here are logged but do not fail the install: the base system is already done.
-
-user=marius
-log() { echo "xc0-late: $*"; logger -t xc0-late "$*" 2>/dev/null || true; }
-
-usermod -aG sudo "$user" && log "added $user to sudo"
-
-# Passwordless sudo, so an agent session on this machine can administer it (sudo -n).
-printf '%s ALL=(ALL:ALL) NOPASSWD: ALL\n' "$user" > /etc/sudoers.d/90-$user
-chmod 0440 /etc/sudoers.d/90-$user
-if visudo -cf /etc/sudoers.d/90-$user >/dev/null; then
-    log "sudoers drop-in ok"
-else
-    rm -f /etc/sudoers.d/90-$user
-    log "sudoers drop-in invalid, removed"
-fi
-
-# SSH keys: the public keys published on the operator's GitHub account.
-install -d -m 0700 -o "$user" -g "$user" "/home/$user/.ssh"
-if curl -fsSL --max-time 30 https://github.com/xc0-marius.keys -o /tmp/keys && [ -s /tmp/keys ]; then
-    install -m 0600 -o "$user" -g "$user" /tmp/keys "/home/$user/.ssh/authorized_keys"
-    log "installed $(wc -l < /tmp/keys) authorized keys"
-else
-    log "could not fetch GitHub keys"
-fi
-
-# Stage 2 source: the public dotfiles repository.
-if su - "$user" -c 'git clone --quiet https://github.com/xc0-sh/dotfiles.git ~/dotfiles'; then
-    log "cloned xc0-sh/dotfiles"
-else
-    log "git clone failed"
-fi
-
-# Testing profile: the base came from the trixie CD; move to testing now.
-suite=@@SUITE@@
-if [ "$suite" = "testing" ]; then
-    printf '%s\n' \
-        "deb http://deb.debian.org/debian testing main contrib non-free non-free-firmware" \
-        "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" \
-        > /etc/apt/sources.list
-    if apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get -y -q \
-            -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade; then
-        log "upgraded to testing"
-    else
-        log "upgrade to testing FAILED"
+# Finish the BASE system only. Desktop/Git scripts run after installation and boot.
+# Any base upgrade failure returns nonzero and base.cfg blocks completion.
+set -eu
+umask 077
+# shellcheck source=/dev/null
+. /root/xc0-install.conf
+mkdir -p /var/lib/xc0
+printf 'state=provisioning\nstage=base\n' > /var/lib/xc0/install-status
+# One authoritative record, even if an ancillary write fails later.
+ln -sfn /var/lib/xc0/install-status /etc/xc0-install
+record_exit() {
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        printf 'state=failed\nstage=base\nexit=%s\n' "$rc" > /var/lib/xc0/install-status
     fi
+}
+trap record_exit EXIT
+exec >>/var/log/xc0-install.log 2>&1
+printf 'xc0: starting %s, git=%s\n' "$ISO_ID" "$STAGE2_REF"
+
+if [ "$PROFILE" = testing ]; then
+    printf '%s\n' \
+        'deb https://deb.debian.org/debian testing main contrib non-free non-free-firmware' \
+        'deb https://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware' \
+        > /etc/apt/sources.list
+    apt-get -o APT::Update::Error-Mode=any -o Acquire::AllowInsecureRepositories=false update
+    DEBIAN_FRONTEND=noninteractive apt-get -y \
+        -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade
+    grep -Eq '^VERSION_CODENAME="?forky"?$' /etc/os-release
+else
+    grep -Eq '^VERSION_CODENAME="?trixie"?$' /etc/os-release
+fi
+apt-get check
+audit=$(dpkg --audit)
+[ -z "$audit" ] || { printf '%s\n' "$audit"; exit 1; }
+dpkg-query -W -f='${binary:Package}\t${Version}\n' > /var/lib/xc0/base-packages.tsv
+
+usermod -aG sudo marius
+# VM-only disposable convenience; never grant production passwordless root.
+if [ "$MODE" = vm-test ]; then
+    printf 'marius ALL=(ALL:ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-xc0-vm-test
+    chmod 0440 /etc/sudoers.d/90-xc0-vm-test
+    visudo -cf /etc/sudoers.d/90-xc0-vm-test
+fi
+if [ -s /root/xc0-authorized_keys ]; then
+    install -d -m 0700 -o marius -g marius /home/marius/.ssh
+    install -m 0600 -o marius -g marius /root/xc0-authorized_keys /home/marius/.ssh/authorized_keys
 fi
 
 {
-    echo "suite=$suite"
-    echo "installed=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    echo "hostname=$(cat /etc/hostname)"
-    echo "iso=@@ISO_ID@@"
-} > /etc/xc0-install
-log "done"
+    printf 'Debian base installed. Desktop configuration has NOT been run.\n\n'
+    printf 'After first boot, as marius:\n'
+    printf '  git clone https://github.com/xc0-sh/dotfiles.git ~/dotfiles\n'
+    printf '  git -C ~/dotfiles checkout --detach %s\n' "$STAGE2_REF"
+    printf '  cd ~/dotfiles\n'
+    printf '  sudo sh setup/bootstrap.sh --profile %s --user marius\n' "$PROFILE"
+} > /etc/xc0-next-steps
+update-grub
+status=$(mktemp /var/lib/xc0/.status.XXXXXX)
+{
+    printf 'state=complete\nstage=base\nprofile=%s\nmode=%s\n' "$PROFILE" "$MODE"
+    printf 'recommended_config_ref=%s\niso=%s\n' "$STAGE2_REF" "$ISO_ID"
+    printf 'installed=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "$status"
+printf 'xc0: BASE installation complete; configuration scripts remain post-install\n'
+mv -f "$status" /var/lib/xc0/install-status

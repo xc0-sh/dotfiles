@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Authentication agent
+Exec=/usr/libexec/polkit-mate-authentication-agent-1
+OnlyShowIn=Hyprland;

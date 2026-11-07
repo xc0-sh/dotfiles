@@ -1,0 +1,2 @@
+# Laptop only: do not introduce the gamemode conflict on thor.
+power-profiles-daemon

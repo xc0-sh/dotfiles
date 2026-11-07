@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Hyprland (xc0, UWSM)
+Comment=Native Lua desktop managed by UWSM
+Exec=/usr/local/bin/xc0-hyprland-session
+TryExec=/usr/local/bin/xc0-hyprland-session
+Type=Application
+DesktopNames=Hyprland

@@ -1,0 +1,8 @@
+font=DejaVu Sans 10
+background-color=#202431
+text-color=#e6edf3
+border-color=#7aa2f7
+border-size=2
+border-radius=6
+default-timeout=7000
+max-visible=4

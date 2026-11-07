@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Bluetooth
+Exec=blueman-applet
+OnlyShowIn=Hyprland;

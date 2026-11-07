@@ -1,0 +1,9 @@
+{
+  "version": "13.7.0",
+  "filename": "debian-13.7.0-amd64-netinst.iso",
+  "url": "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.7.0-amd64-netinst.iso",
+  "sha512": "ef04d0276850d70e4aaec0b55003628660e9631b26e35215a70ab3c8c707294a4b12731bc73c75a932902f703a7c278310ca99df28d6b36fb06d5618d8d0f678",
+  "signer_fingerprint": "DF9B9C49EAA9298432589D76DA87E80D6294BE9B",
+  "key_source": "https://www.debian.org/CD/verify",
+  "checked": "2026-11-07"
+}

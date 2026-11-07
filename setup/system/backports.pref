@@ -1,0 +1,16 @@
+# Debian's normal backports policy, not a system-wide 500/990 priority.
+Package: *
+Pin: release n=trixie-backports
+Pin-Priority: 100
+
+# Only the selected desktop stack follows backports on subsequent apt upgrades.
+Package: hyprland hypridle hyprlock xdg-desktop-portal-hyprland uwsm
+Pin: release n=trixie-backports
+Pin-Priority: 990
+
+# Hyprland 0.55.2 requires libxkbcommon >= 1.12.3 (trixie has 1.7).
+# This ABI dependency must also be selectable, without promoting all backports.
+# The registry (Waybar) and X11 helper (Qt) have exact-version dependencies.
+Package: libxkbcommon0 libxkbcommon-x11-0 libxkbregistry0
+Pin: release n=trixie-backports
+Pin-Priority: 990

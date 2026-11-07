@@ -1,0 +1,7 @@
+Template: xc0/confirm-erase
+Type: string
+Description: Confirm erasing ${DISK} (${MODEL}, serial ${SERIAL})
+ ALL partitions and data on this disk will be destroyed. Other disks are not
+ selected. To continue type exactly: ERASE ${SERIAL}
+ .
+ Cancel or an incorrect answer blocks the installation.

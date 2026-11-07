@@ -1,51 +1,74 @@
-# xc0-sh/dotfiles
+# Debian + Wayland + Hyprland
 
-Debian + Wayland + Hyprland, installed in two stages:
+Two-stage installation for the operator's Debian workstations:
 
-1. **ISO** — the official Debian netinst image, repacked with a preseed answer file. It
-   installs a minimal base system and nothing else.
-2. **Git** — the installer's last step clones this repository and runs `setup/bootstrap.sh`,
-   which installs the desktop and links the configuration. Everything after the base comes
-   from here, so changing the desktop never means rebuilding the ISO.
+1. A checksum-pinned official Debian netinst installs the base using preseed.
+2. **After installation and first boot**, pull an exact Git commit from this
+   public repository and run its configuration scripts. No desktop bootstrap
+   runs inside the installer and no deploy key is baked into the ISO.
 
-This repository is **public** so a fresh machine can clone it with no credentials. It must
-never contain secrets: no keys, tokens, passwords or password hashes. CI runs gitleaks on
-every push.
+The desktop is a clean Debian configuration, not a claim that the complete Arch
+rice, every cosmetic helper or every hardware-specific service has been ported.
+The preserved Arch setup is [xc0-sh/arch-dotfiles](https://github.com/xc0-sh/arch-dotfiles).
 
 ## Profiles
 
-| Machine | Debian | Hyprland | Notes |
+| Target | Debian suite | Desktop source | Hardware acceptance |
 |---|---|---|---|
-| loki (ThinkPad X13 Yoga Gen 2) | testing (forky) | 0.57.0 from testing | Intel graphics, touch and pen |
-| thor | 13 (trixie) + backports | 0.55.2 from trixie-backports | NVIDIA; driver stack per thor Host Spec §7 |
-| baldr | 13 (trixie) + backports | 0.55.2 from trixie-backports | |
-| other PCs, QEMU | 13 (trixie) + backports | 0.55.2 from trixie-backports | |
+| loki | testing (currently forky) | Debian testing Hyprland | Intel/Yoga/Wi-Fi checks required on hardware |
+| baldr | 13/trixie | targeted trixie-backports Hyprland | laptop checks required |
+| thor | 13/trixie | targeted trixie-backports Hyprland | separate NVIDIA/driver review required; preserve its data disk |
+| Generic PCs and QEMU | stable or testing | matching Debian repositories | UEFI VM evidence is recorded separately |
 
-thor and baldr are specified as X11 + i3 in the xCloud documents today. Moving them to
-Wayland + Hyprland is an accepted change that lands in those specifications once this
-installer works (`xcloud-state`, open-loki-agent decisions, 2026-11-07).
+Stable installs must not promote the entire backports suite or replace the
+stable kernel/audio stack as an accidental consequence of installing Hyprland.
 
-## Layout
+## Release safety
 
+- A release ISO requires an exact target disk serial and DMI identity.
+- It asks locally for credentials and `ERASE <serial>` before approving disk writes.
+- Failed validation blocks synchronously; a separate partman guard rechecks identity.
+- The original Debian interactive/rescue initrd remains untouched.
+- Base install/upgrade failures cannot be turned into a successful install marker.
+- The marker explicitly says `stage=base`; it does not claim desktop configuration.
+- `/etc/xc0-next-steps` records the reviewed Git commit and post-install commands.
+- An explicitly separate `vm-test` mode may embed throwaway secrets, but only a
+  QEMU VM with its designated virtual disk can use it. Never publish those ISOs.
+
+See [deployment instructions](docs/deployment.md) and [reviewed input pins](VERSIONS.md).
+Do not boot an older prototype image as a production installer.
+
+## Development and tests
+
+```sh
+make check
+sh iso/build.sh --help
 ```
-iso/          netinst repack: build script, preseed files, late command (stage 1)
-setup/        bootstrap.sh and package lists per profile (stage 2)
-config/       configuration packages, linked into $HOME with GNU stow
-tests/        QEMU boot tests (UEFI via OVMF)
+
+`make check` runs shell lint and deterministic installer/bootstrap regression tests.
+It does not stand in for a fresh VM install or a real graphical session test.
+`tests/vm/` creates file-backed libvirt VMs visible in Virtual Machine Manager and
+contains post-login acceptance checks. No VM test attaches a physical host disk.
+
+The source netinst is Debian 13.7.0 because the testing weekly image trial had a
+kernel/module mismatch. The testing profile upgrades the clean base before stage 2.
+
+## Repository layout
+
+```text
+iso/               netinst repack, preseed, exact-target safeguards, Ventoy copy
+setup/             idempotent Debian desktop/bootstrap, package profiles
+config/            clean desktop configuration
+tests/iso/         installer safety and failure regression tests
+tests/bootstrap/   bootstrap/config regression tests
+tests/vm/          real libvirt install/session checks
+docs/              deployment procedure and limitations
 ```
 
-## Known facts (checked 2026-11-07)
+This repository is public. Never commit passwords, password hashes, API keys,
+private SSH keys, private ISO builds or target credential files. CI scans the full
+history with gitleaks as well as running lint/regression tests.
 
-- Debian 13 **main** has no Hyprland; trixie-backports has 0.55.2, testing and sid have 0.57.0.
-  Upstream is 0.57.1.
-- The operator's current Lua config (`hyprland.lua`, from `xc0-sh/arch-dotfiles`) passes
-  `Hyprland --verify-config` on both 0.55.2 and 0.57.0. That is a parse check, not a live
-  session.
-- No Debian package exists for: `awww` (wallpaper), `satty`, `hyprshot`, `matugen`, Nerd
-  Fonts, `prettier`. These come from upstream releases in stage 2, pinned with checksums.
-
-## Related repositories
-
-- [`xc0-sh/arch-dotfiles`](https://github.com/xc0-sh/arch-dotfiles) — the Arch Linux
-  Hyprland dotfiles this replaces on Debian (copy of `xc0sh/dotfiles`).
-- `xc0-sh/fenrir` — the xCloud live ISO (live-build, X11/i3). Not used here.
+The accepted thor/baldr desktop change is tracked in the private xCloud build
+record. A VM pass is not an assertion of NVIDIA, suspend, touch/pen or Secure Boot
+compatibility on those machines.

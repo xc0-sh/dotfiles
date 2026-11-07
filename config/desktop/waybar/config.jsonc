@@ -1,0 +1,23 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["cpu", "memory", "network", "pulseaudio", "tray", "custom/lock", "custom/logout"],
+  "hyprland/workspaces": {"format": "{name}", "on-click": "activate"},
+  "clock": {"format": "{:%a %d %b  %H:%M}", "tooltip-format": "{:%Y-%m-%d}"},
+  "cpu": {"format": "CPU {usage}%", "interval": 5},
+  "memory": {"format": "RAM {percentage}%", "interval": 5},
+  "network": {
+    "format-wifi": "Wi-Fi {signalStrength}%",
+    "format-ethernet": "LAN",
+    "format-disconnected": "Offline",
+    "tooltip-format": "{ifname} {ipaddr}",
+    "on-click": "nm-connection-editor"
+  },
+  "pulseaudio": {"format": "Vol {volume}%", "format-muted": "Muted", "on-click": "pavucontrol"},
+  "tray": {"spacing": 8},
+  "custom/lock": {"format": "Lock", "on-click": "pidof hyprlock || hyprlock", "tooltip": false},
+  "custom/logout": {"format": "Logout", "on-click": "uwsm stop", "tooltip": false}
+}

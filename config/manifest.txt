@@ -1,0 +1,14 @@
+# Paths beneath the login user's .config, linked individually (not whole trees).
+hypr/hyprland.lua
+hypr/hypridle.conf
+hypr/hyprlock.conf
+waybar/config.jsonc
+waybar/style.css
+foot/foot.ini
+fuzzel/fuzzel.ini
+mako/config
+xdg-desktop-portal/hyprland-portals.conf
+uwsm/env
+autostart/nm-applet.desktop
+autostart/blueman.desktop
+autostart/polkit-mate-authentication-agent-1.desktop

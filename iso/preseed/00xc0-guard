@@ -1,0 +1,8 @@
+#!/bin/sh
+# Partman's init loop checks a nonzero status, unlike preseed_command's wrappers.
+# Revalidate on EVERY invocation; a failed/missing hook cannot bypass this gate.
+if sh -eu /xc0/select-disk.sh --validate-authorized; then
+    exit 0
+fi
+sh -eu /xc0/select-disk.sh || exit 1
+sh -eu /xc0/select-disk.sh --validate-authorized || exit 1

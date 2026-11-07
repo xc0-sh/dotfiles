@@ -1,86 +1,60 @@
-# Desktop packages for every profile, Debian names.
-# Checked with `apt-cache policy` against trixie + trixie-backports and sid on 2026-11-07.
-# On the stable profiles the Hyprland stack comes from trixie-backports (see hyprland.txt).
-
-# base tools
-wget
-curl
+# Lean signed-Debian desktop core. No compiler/toolchain or cosmetic rice stack.
+# Install without recommends; required runtime integrations are explicit.
+ca-certificates
+debian-archive-keyring
+dbus-user-session
+libpam-systemd
+systemd-sysv
+python3
 git
-rsync
-stow
-unzip
-tar
-jq
-vim
-neovim
-inotify-tools
-acl
-zsh
-fish
-fzf
-eza
-htop
-btop
-fastfetch
-figlet
-lazygit
-cargo
+sudo
 xdg-user-dirs
+xdg-utils
 
-# storage and devices
-udisks2
-udiskie
-gvfs
-gvfs-backends
-blueman
-brightnessctl
-power-profiles-daemon
+# Native Wayland desktop and X11 application compatibility.
+foot
+fuzzel
+waybar
+mako-notifier
+sddm
+# SDDM's packaged Maui theme avoids the Debian Breeze -> Plasma dependency tree.
+sddm-theme-maui
+# Only the login greeter uses Xorg. The desktop session below is native Wayland.
+xserver-xorg-core
+xserver-xorg-input-libinput
+xwayland
+libgl1-mesa-dri
+mate-polkit
+polkitd
+libnotify-bin
+thunar
+firefox-esr
+
+# Desktop network control, Wi-Fi agent, Bluetooth and sound.
+network-manager
 network-manager-applet
 nm-connection-editor
-
-# desktop
-kitty
-waybar
-rofi
-sway-notification-center
-nwg-look
-nwg-displays
+wpasupplicant
+bluez
+blueman
+pipewire-audio
+pipewire-pulse
+wireplumber
+libspa-0.2-bluetooth
 pavucontrol
-qt6ct
+brightnessctl
+
+# Portal fallback supplies file picking; Hyprland supplies screen sharing.
+xdg-desktop-portal
+xdg-desktop-portal-gtk
 qt6-wayland
 qtwayland5
-qt6-svg-plugins
-qt6-virtualkeyboard-plugin
-gnome-themes-extra
-breeze-cursor-theme
-mate-polkit
-libnotify-bin
-libsecret-1-0
-imagemagick
-nautilus
-tumbler
-loupe
-gnome-text-editor
-vlc
-firefox-esr
-flatpak
 
-# screenshots and clipboard
+# Screenshots/clipboard, using packaged tools rather than upstream binaries.
 grim
 slurp
 wl-clipboard
-cliphist
-tesseract-ocr
-tesseract-ocr-eng
 
-# python helpers used by the config
-python3-pip
-pipx
-python3-gi
-python3-screeninfo
-
-# fonts
-fonts-firacode
-fonts-jetbrains-mono
-fonts-font-awesome
+# Standard readable fonts; the bar uses text, not Nerd Font code points.
+fonts-dejavu-core
 fonts-noto-color-emoji

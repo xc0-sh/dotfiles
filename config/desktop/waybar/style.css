@@ -1,0 +1,14 @@
+* {
+    font-family: "DejaVu Sans";
+    font-size: 12px;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+window#waybar { background: #202431; color: #e6edf3; }
+#workspaces button { padding: 0 10px; color: #aab8cc; background: transparent; }
+#workspaces button.active { color: #ffffff; background: #39465d; }
+#clock, #cpu, #memory, #network, #pulseaudio, #tray, #custom-lock, #custom-logout {
+    padding: 0 9px;
+}
+#custom-lock, #custom-logout { color: #a6c8ff; }

@@ -1,13 +1,8 @@
-# Hyprland stack. On trixie these install with `-t trixie-backports`;
-# on testing they come from the main suite.
-# trixie-backports versions on 2026-11-07 in comments.
-hyprland                     # 0.55.2+ds-1~bpo13+1
-hyprlock                     # 0.9.6-1~bpo13+1
-hypridle                     # 0.1.8-1~bpo13+1
-hyprpicker                   # 0.4.7-1~bpo13+1
-hyprsunset                   # 0.4.0-1~bpo13+1
-hyprshutdown                 # 0.1.1-1~bpo13+1
-xdg-desktop-portal-hyprland  # 1.4.1-1~bpo13+1
-xdg-desktop-portal-gtk
-uwsm                         # 0.26.7+ds-2~bpo13+1
-quickshell                   # 0.3.0-1~bpo13+1
+# Only these requested packages are selected from trixie-backports.
+# apt resolves their required libraries without giving all backports priority 500
+# or using a broad `-t trixie-backports` transaction. Forky uses its normal suite.
+hyprland
+hypridle
+hyprlock
+xdg-desktop-portal-hyprland
+uwsm
