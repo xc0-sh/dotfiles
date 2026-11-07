@@ -315,6 +315,20 @@ class UsbInUseTests(unittest.TestCase):
 
 
 class CopyPreflightTests(unittest.TestCase):
+    def test_usb_checksum_is_portable_after_the_image_is_renamed(self):
+        script = (ISO / "copy-to-ventoy.sh").read_text(encoding="utf-8")
+        marker = 'python3 - "$manifest" "$checksum_file" <<\'PY\'\n'
+        body = script.split(marker, 1)[1].split("\nPY\n", 1)[0]
+        with tempfile.TemporaryDirectory(dir=TEMP_ROOT) as directory:
+            root = Path(directory)
+            manifest = root / "source.iso.manifest.json"
+            checksum = root / "usb.sha256"
+            digest = "a" * 64
+            manifest.write_text(json.dumps({"image_sha256": digest}))
+            subprocess.run([sys.executable, "-", str(manifest), str(checksum)],
+                           input=body, text=True, check=True, capture_output=True)
+            self.assertEqual(checksum.read_text(), digest + "  xc0-installer.iso\n")
+
     def test_every_libvirt_rejection_precedes_mount_and_no_formatting_exists(self):
         script = (ISO / "copy-to-ventoy.sh").read_text(encoding="utf-8")
         usb_check = script.index('usb-in-use.py')

@@ -25,8 +25,11 @@ The release path is deliberately different from the disposable `vm-test` path:
 | Sudo | normal authenticated sudo group | disposable test-only passwordless sudo |
 | Completion | power off; remove installer before first disk boot | power off; switch VM boot order |
 
-No test VM is allowed to attach `/dev/nvme*`, a real USB disk or any other host
-block device. `tests/vm/create.sh` uses a new qcow2 image and a read-only ISO.
+No test VM may attach the host NVMe or any writable physical block device.
+`tests/vm/create.sh` uses only a new qcow2 image and a read-only ISO. A separate
+final-media test can boot the identified production USB as a **read-only emulated
+USB disk**, with a new disposable qcow2 as its sole writable install target.
+Verify this isolation in libvirt XML before approving any VM erase prompt.
 
 ## Build a production artifact for loki
 

@@ -48,7 +48,8 @@ sh iso/build.sh --help
 `make check` runs shell lint and deterministic installer/bootstrap regression tests.
 It does not stand in for a fresh VM install or a real graphical session test.
 `tests/vm/` creates file-backed libvirt VMs visible in Virtual Machine Manager and
-contains post-login acceptance checks. No VM test attaches a physical host disk.
+contains post-login acceptance checks. No test exposes a writable physical host
+disk; final USB boot validation uses that identified source read-only.
 
 The source netinst is Debian 13.7.0 because the testing weekly image trial had a
 kernel/module mismatch. The testing profile upgrades the clean base before stage 2.

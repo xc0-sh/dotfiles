@@ -39,16 +39,27 @@ mountpoints=$(lsblk -ndo MOUNTPOINTS -- "$partition")
 sudo -n python3 "$here/usb-in-use.py" "$parent"
 
 mountpoint=$(mktemp -d)
+checksum_file=''
 mounted=false
 cleanup() {
     result=$?
     trap - EXIT HUP INT TERM
     if [ "$mounted" = true ]; then sudo -n umount "$mountpoint" || result=$?; fi
     rmdir -- "$mountpoint" || result=$?
+    if [ -n "$checksum_file" ]; then rm -f -- "$checksum_file" || result=$?; fi
     exit "$result"
 }
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
+checksum_file=$(mktemp)
+# The USB image is renamed, so its checksum must refer to that local basename,
+# not the build host's absolute source path. The manifest was verified above.
+python3 - "$manifest" "$checksum_file" <<'PY'
+import json, sys
+digest = json.load(open(sys.argv[1]))["image_sha256"]
+with open(sys.argv[2], "w") as stream:
+    stream.write(digest + "  xc0-installer.iso\n")
+PY
 
 copy_verified() {
     if [ -d "$2" ] || [ -d "$2.new" ]; then
@@ -74,11 +85,7 @@ target_manifest=$target_iso.manifest.json
 target_sha256=$target_iso.sha256
 copy_verified "$iso" "$target_iso"
 copy_verified "$manifest" "$target_manifest"
-copy_sha256=false
-if [ -f "$iso.sha256" ]; then
-    copy_verified "$iso.sha256" "$target_sha256"
-    copy_sha256=true
-fi
+copy_verified "$checksum_file" "$target_sha256"
 
 ventoy_config=$mountpoint/ventoy/ventoy.json
 [ ! -L "$ventoy_config" ] || {
@@ -99,6 +106,7 @@ mounted=true
 cmp -- "$iso" "$target_iso"
 cmp -- "$manifest" "$target_manifest"
 cmp -- "$here/ventoy.json" "$ventoy_config"
-if [ "$copy_sha256" = true ]; then cmp -- "$iso.sha256" "$target_sha256"; fi
+cmp -- "$checksum_file" "$target_sha256"
+(cd "$mountpoint/xc0" && sha256sum -c xc0-installer.iso.sha256)
 python3 "$here/verify-artifact.py" "$target_iso"
 echo 'release copied and verified; physical disk has not been repartitioned'

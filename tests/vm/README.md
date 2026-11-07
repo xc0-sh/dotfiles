@@ -4,8 +4,10 @@
 a localhost-only VNC console and the libvirt default network. The base install
 does not need accelerated graphics. `XC0_VM_3D=1` selects virtio/EGL for separate
 later desktop experiments, not the base-ISO readiness gate.
-It never reuses or truncates an existing disk/domain and never attaches a host
-block device. Names must start `xc0-e2e-`.
+The helper never reuses/truncates an existing disk/domain or attaches a host block
+device. Names must start `xc0-e2e-`. A separate production-media check may attach
+the exact identified USB as a read-only source; the sole writable disk must still
+be a fresh qcow2. Never expose the physical NVMe or a writable USB to the guest.
 
 ```sh
 sh tests/vm/create.sh build/<vm-test>.iso xc0-e2e-testing
