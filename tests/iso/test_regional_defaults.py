@@ -12,10 +12,20 @@ class RegionalDefaultsTests(unittest.TestCase):
             "d-i debian-installer/locale string en_US.UTF-8",
             "d-i debian-installer/language string en",
             "d-i keyboard-configuration/xkb-keymap select no",
-            "d-i keyboard-configuration/layoutcode string no",
+            "keyboard-configuration keyboard-configuration/layoutcode string no",
+            "keyboard-configuration keyboard-configuration/variant select Norwegian",
             "d-i time/zone string Europe/Oslo",
         ):
             self.assertEqual(lines.count(answer), 1)
+
+    def test_keyboard_package_answers_survive_target_seed_export(self):
+        exported = {}
+        for line in (ROOT / "iso/preseed/base.cfg").read_text().splitlines():
+            fields = line.split(maxsplit=3)
+            if len(fields) == 4 and fields[0] == "keyboard-configuration":
+                exported[fields[1]] = fields[3]
+        self.assertEqual(exported["keyboard-configuration/layoutcode"], "no")
+        self.assertEqual(exported["keyboard-configuration/variant"], "Norwegian")
 
     def test_post_install_desktop_defaults_do_not_revert_to_us_keyboard(self):
         hypr = (ROOT / "config/desktop/hypr/hyprland.lua").read_text()

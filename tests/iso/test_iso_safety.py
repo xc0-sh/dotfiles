@@ -577,6 +577,9 @@ exit 0
         self.assertTrue((self.root / "etc/xc0-install").is_symlink())
         self.assertEqual((self.root / "etc/xc0-install").read_text(), status)
         self.assertIn(REF, (self.root / "etc/xc0-next-steps").read_text())
+        for path in (self.root / "var/lib/xc0", self.root / "var/lib/xc0/install-status",
+                     self.root / "etc/xc0-next-steps"):
+            self.assertTrue(path.stat().st_mode & 0o004, f"login user cannot read {path}")
 
 
 if __name__ == "__main__":

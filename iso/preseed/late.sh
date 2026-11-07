@@ -5,8 +5,9 @@ set -eu
 umask 077
 # shellcheck source=/dev/null
 . /root/xc0-install.conf
-mkdir -p /var/lib/xc0
+install -d -m 0755 /var/lib/xc0
 printf 'state=provisioning\nstage=base\n' > /var/lib/xc0/install-status
+chmod 0644 /var/lib/xc0/install-status
 # One authoritative record, even if an ancillary write fails later.
 ln -sfn /var/lib/xc0/install-status /etc/xc0-install
 record_exit() {
@@ -35,6 +36,7 @@ apt-get check
 audit=$(dpkg --audit)
 [ -z "$audit" ] || { printf '%s\n' "$audit"; exit 1; }
 dpkg-query -W -f='${binary:Package}\t${Version}\n' > /var/lib/xc0/base-packages.tsv
+chmod 0644 /var/lib/xc0/base-packages.tsv
 
 usermod -aG sudo marius
 # VM-only disposable convenience; never grant production passwordless root.
@@ -56,6 +58,7 @@ fi
     printf '  cd ~/dotfiles\n'
     printf '  sudo sh setup/bootstrap.sh --profile %s --user marius\n' "$PROFILE"
 } > /etc/xc0-next-steps
+chmod 0644 /etc/xc0-next-steps
 update-grub
 status=$(mktemp /var/lib/xc0/.status.XXXXXX)
 {
@@ -63,5 +66,6 @@ status=$(mktemp /var/lib/xc0/.status.XXXXXX)
     printf 'recommended_config_ref=%s\niso=%s\n' "$STAGE2_REF" "$ISO_ID"
     printf 'installed=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$status"
+chmod 0644 "$status"
 printf 'xc0: BASE installation complete; configuration scripts remain post-install\n'
 mv -f "$status" /var/lib/xc0/install-status

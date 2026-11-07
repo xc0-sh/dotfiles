@@ -21,8 +21,13 @@ if __name__ == "__main__":
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--text")
     g.add_argument("--file", type=Path)
+    p.add_argument("--layout", choices=("no", "us"), default="no",
+                   help="current guest console layout, not the intended installed layout")
     p.add_argument("--enter", action="store_true")
     a = p.parse_args()
+    if a.layout == "us":
+        KEYS.update({"-": ["KEY_MINUS"], "/": ["KEY_SLASH"],
+                     "_": ["KEY_LEFTSHIFT", "KEY_MINUS"]})
     if not a.domain.startswith("xc0-e2e-"):
         p.error("only disposable xc0-e2e- domains are eligible")
     text = a.file.read_text().rstrip("\n") if a.file else a.text
