@@ -54,9 +54,10 @@ The OS disk is GPT with no disk-backed swap:
   `noatime,compress=zstd:3`. The empty `@swap` directory gets `+C` before copying;
   no swapfile or pacman setup is created.
 
-Both use mapper `xcloud_root_crypt`. The partition recipe requests 1074 decimal MB
+Both use mapper `xcloud_root_crypt`. The partition recipe requests 1075 decimal MB
 for aligned 1 GiB boot partitions; a pre-kernel check requires exactly 1,073,741,824
-bytes on the authorized OS disk. d-i mounts Loki's ESP at `/boot/efi`; the hook
+bytes on the authorized OS disk. A VM rehearsal measured that 1074 MB produced
+only 1,072,693,248 bytes (1023 MiB), so that request is rejected. d-i mounts Loki's ESP at `/boot/efi`; the hook
 moves it to `/boot` before kernel installation and adjusts fstab. A local GRUB
 diversion preserves Debian's signed implementation while targeting `/boot`.
 The Btrfs reshape preserves installed metadata, parks nested mounts, renames the
