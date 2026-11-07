@@ -2,10 +2,18 @@
 # Run as root INSIDE a fresh xc0 VM. Base-only by default; --desktop adds stage-2 checks.
 # Does not claim real Wi-Fi, speakers, NVIDIA, suspend or Secure Boot validation.
 set -eu
-profile=${1:?usage: acceptance.sh testing|stable [user] [--desktop]}
-user=${2:-marius}
-desktop=${3:-}
-case "$desktop" in ''|--desktop) : ;; *) exit 2 ;; esac
+profile=${1:?usage: acceptance.sh testing|stable [user] [--host loki|thor] [--desktop]}
+shift
+user=marius desktop='' expected_host=''
+case "${1:-}" in ''|--*) : ;; *) user=$1; shift ;; esac
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --desktop) desktop=--desktop; shift ;;
+        --host) [ "$#" -ge 2 ] && [ -z "$expected_host" ]; expected_host=$2; shift 2 ;;
+        *) exit 2 ;;
+    esac
+done
+case "$expected_host" in ''|loki|thor) : ;; *) exit 2 ;; esac
 case "$profile" in testing|stable) : ;; *) exit 2 ;; esac
 case "$user" in ''|*[!a-zA-Z0-9_-]*) exit 2 ;; esac
 [ "$(id -u)" -eq 0 ] || { echo 'run inside the guest as root' >&2; exit 2; }
@@ -22,6 +30,48 @@ pass 'non-root desktop account'
 findmnt -rn -o SOURCE / | grep -q /dev/mapper/
 lsblk -nr -o TYPE | grep -qx crypt
 pass 'encrypted root/LVM boot'
+if [ -n "$expected_host" ]; then
+    case "$expected_host:$profile" in loki:testing|thor:stable) : ;; *) exit 1 ;; esac
+    [ "$(hostname -s)" = "$expected_host" ]
+    grep -qx "hostname=$expected_host" /var/lib/xc0/install-status
+    grep -qx "layout=$expected_host" /var/lib/xc0/install-status
+    grep -qx 'marius=1001:1001' /var/lib/xc0/install-status
+    grep -qx 'xcloud=1000:1000' /var/lib/xc0/install-status
+    sh /root/xc0-accounts.sh --check
+    pass 'exact 1000:1000 xcloud (locked), 1001:1001 marius, named groups and home ownership'
+    cryptsetup status xcloud_root_crypt | grep -Eq '^[[:space:]]*type:[[:space:]]+LUKS2$'
+    grep -Eq '^xcloud_root_crypt[[:space:]]+UUID=' /etc/crypttab
+    root_uuid=$(findmnt -rn -M / -o UUID)
+    if [ "$expected_host" = thor ]; then
+        level=1
+        pairs='@:/ @home:/home @snapshots:/.snapshots @var_log:/var/log @var_tmp:/var/tmp @aios:/var/lib/aios @srv_aios:/srv/aios @xccode:/var/lib/xcloud/xccode'
+        esp=/boot/efi
+        [ "$(findmnt -rn -M /boot -o FSTYPE)" = ext4 ]
+        [ "$(blockdev --getsize64 "$(findmnt -rn -M /boot -o SOURCE)")" = 1073741824 ]
+    else
+        level=3
+        pairs='@:/ @home:/home @pkg:/var/cache/pacman/pkg @log:/var/log @swap:/swap'
+        esp=/boot
+        lsattr -d /swap | awk '$1 !~ /C/ {exit 1}'
+        [ ! -e /swap/swapfile ]
+    fi
+    for pair in $pairs; do
+        subvolume=${pair%%:*} mountpoint=${pair#*:}
+        [ "$(findmnt -rn -M "$mountpoint" -o FSTYPE)" = btrfs ]
+        [ "$(findmnt -rn -M "$mountpoint" -o FSROOT)" = "/$subvolume" ]
+        [ "$(findmnt -rn -M "$mountpoint" -o UUID)" = "$root_uuid" ]
+        options=$(findmnt -rn -M "$mountpoint" -o OPTIONS)
+        printf '%s\n' "$options" | grep -Eq '(^|,)noatime(,|$)'
+        if [ "$subvolume" != @swap ]; then
+            printf '%s\n' "$options" | grep -Eq "(^|,)compress=zstd:$level(,|\$)"
+        fi
+    done
+    [ "$(findmnt -rn -M "$esp" -o FSTYPE)" = vfat ]
+    [ "$(blockdev --getsize64 "$(findmnt -rn -M "$esp" -o SOURCE)")" = 1073741824 ]
+    [ -s "$esp/EFI/debian/shimx64.efi" ] && [ -s "$esp/EFI/debian/grubx64.efi" ]
+    awk '!/^#/ && $3 == "swap" {exit 1}' /etc/fstab
+    pass 'host-specific UUID/subvolume mounts, boot partitions and LUKS2; no disk swap'
+fi
 [ "$(timedatectl show -p Timezone --value)" = Europe/Oslo ]
 pass 'timezone Europe/Oslo'
 grep -Eq '^XKBLAYOUT="?no"?$' /etc/default/keyboard

@@ -1,7 +1,30 @@
 {
     "control": [
-        { "VTOY_MENU_TIMEOUT": "5" },
-        { "VTOY_DEFAULT_IMAGE": "/xc0/xc0-installer.iso" },
-        { "VTOY_SECONDARY_TIMEOUT": "3" }
-    ]
+        { "VTOY_DEFAULT_SEARCH_ROOT": "/xc0" },
+        { "VTOY_DEFAULT_MENU_MODE": "0" },
+        { "VTOY_MAX_SEARCH_LEVEL": "0" },
+        { "VTOY_SECONDARY_BOOT_MENU": "1" }
+    ],
+    "image_list": [
+        "/xc0/xc0-loki-installer.iso",
+        "/xc0/xc0-thor-installer.iso"
+    ],
+    "menu_alias": [
+        {
+            "image": "/xc0/xc0-loki-installer.iso",
+            "alias": "loki - Debian testing / forky - guarded base install"
+        },
+        {
+            "image": "/xc0/xc0-thor-installer.iso",
+            "alias": "thor - Debian 13 stable / trixie - guarded base install"
+        }
+    ],
+    "theme": {
+        "file": "/ventoy/theme/xcloud/theme.txt",
+        "gfxmode": "1920x1080,1280x720,1024x768,auto",
+        "display_mode": "GUI",
+        "ventoy_left": "5%",
+        "ventoy_top": "95%",
+        "ventoy_color": "#88c0d0"
+    }
 }

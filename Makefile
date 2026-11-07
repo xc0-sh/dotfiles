@@ -4,9 +4,10 @@ check: lint test
 
 lint:
 	git ls-files -co --exclude-standard '*.sh' | sort -u | xargs -r shellcheck
-	shellcheck -s sh iso/preseed/00xc0-guard
+	shellcheck -s sh iso/preseed/00xc0-guard iso/preseed/90xc0-boot
 	python3 -m json.tool iso/upstream.json >/dev/null
 	python3 -m json.tool iso/ventoy.json >/dev/null
+	python3 -m json.tool iso/hosts.json >/dev/null
 
 test:
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/iso -p 'test_*.py' -v

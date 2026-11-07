@@ -1,6 +1,6 @@
 #!/bin/sh
 # Repack the checksum-pinned signed Debian release installer. Never write disks.
-# Production: local credentials + typed erase confirmation, explicit serial/DMI.
+# Production: local credentials + typed erase confirmation, explicit target policy.
 # vm-test: private throwaway credentials, only QEMU + XC0_TEST_DISK accepted.
 set -eu
 usage() {
@@ -9,6 +9,8 @@ Usage: iso/build.sh NETINST.iso testing|stable [options]
   --hostname NAME           installed hostname (default loki for testing)
   --target-serial SERIAL     exact physical install disk serial (release mode)
   --target-dmi PRODUCT       exact DMI product_name (release mode)
+  --target-model MODEL       disk model substring (attended thor release only)
+  --protected-model MODEL    disk model substring that must never be selected
   --stage2-ref COMMIT        reviewed post-install commit (default clean checkout HEAD)
   --authorized-keys FILE     optional explicit SSH public keys, not a GitHub account feed
   --vm-test                  unattended disposable VM test; never for physical disks
@@ -23,14 +25,16 @@ if [ "${1:-}" = --help ]; then usage; exit 0; fi
 src=$1 profile=$2; shift 2
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(dirname "$here")
-mode=release hostname='' serial='' dmi='' ref='' keys='' secrets='' out_dir=$root/build
+mode=release hostname='' serial='' dmi='' model='' protected='' ref='' keys='' secrets='' out_dir=$root/build
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --hostname|--target-serial|--target-dmi|--stage2-ref|--authorized-keys|--secrets-dir|--output-dir)
+        --hostname|--target-serial|--target-dmi|--target-model|--protected-model|--stage2-ref|--authorized-keys|--secrets-dir|--output-dir)
             [ "$#" -ge 2 ] || { echo "missing value: $1" >&2; exit 2; }
+            [ -n "$2" ] || { echo "empty value: $1" >&2; exit 2; }
             case "$1" in
                 --hostname) hostname=$2 ;; --target-serial) serial=$2 ;;
                 --target-dmi) dmi=$2 ;; --stage2-ref) ref=$2 ;;
+                --target-model) model=$2 ;; --protected-model) protected=$2 ;;
                 --authorized-keys) keys=$2 ;; --secrets-dir) secrets=$2 ;;
                 --output-dir) out_dir=$2 ;;
             esac
@@ -50,52 +54,111 @@ if [ -z "$hostname" ]; then
 fi
 case "$hostname" in ''|*[!a-z0-9-]*|-*|*-) echo 'invalid hostname' >&2; exit 2 ;; esac
 [ "${#hostname}" -le 63 ] || exit 2
+case "$hostname:$profile" in
+    loki:stable|thor:testing) echo 'loki requires testing; thor requires stable' >&2; exit 2 ;;
+esac
+if [ "$profile" = testing ]; then layout=loki; else layout=thor; fi
 if [ "$mode" = vm-test ]; then
-    serial=XC0_TEST_DISK dmi=QEMU
+    target_mode=vm-test serial=XC0_TEST_DISK dmi=QEMU model='' protected=''
     [ -n "$secrets" ] || { echo '--vm-test needs --secrets-dir' >&2; exit 2; }
     for f in luks-passphrase user-password-hash; do
         [ -s "$secrets/$f" ] || { echo "missing VM credential file: $f" >&2; exit 2; }
     done
 else
     [ -z "$secrets" ] || { echo 'release mode refuses embedded credentials' >&2; exit 2; }
-    if [ -z "$serial" ] || [ -z "$dmi" ]; then
-        echo 'release mode needs target serial AND DMI product' >&2; exit 2
+    if [ -n "$serial" ] && [ -n "$dmi" ] && [ -z "$model$protected" ]; then
+        target_mode='serial-dmi'
+    elif [ -n "$model" ] && [ -n "$protected" ] && [ -z "$serial$dmi" ]; then
+        target_mode='model-confirm'
+        [ "$hostname" = thor ] || { echo 'model-confirm requires --hostname thor' >&2; exit 2; }
+    else
+        echo 'release needs target serial AND DMI product OR target model AND protected model (exactly one complete policy)' >&2
+        exit 2
     fi
 fi
 # Restrict config values rather than source arbitrary caller-supplied shell text.
 case "$serial" in *[!a-zA-Z0-9_.:-]*) echo 'unsupported serial characters' >&2; exit 2 ;; esac
-printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '^[a-zA-Z0-9 ._:()+/-]+$' || {
-    echo 'unsupported DMI characters' >&2; exit 2;
-}
-if [ -z "$ref" ]; then
-    [ -z "$(git -C "$root" status --porcelain --untracked-files=normal)" ] || {
-        echo 'commit the reviewed source before building, or provide --stage2-ref explicitly' >&2; exit 2;
+[ "${#serial}" -le 128 ] || { echo 'serial is too long' >&2; exit 2; }
+if [ "$target_mode" != model-confirm ]; then
+    case "$dmi" in *'
+'*) echo 'unsupported DMI characters' >&2; exit 2 ;; esac
+    printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '^[a-zA-Z0-9 ._:()+/-]+$' &&
+        printf '%s\n' "$dmi" | LC_ALL=C grep -Eq '[a-zA-Z0-9]' && [ "${#dmi}" -le 256 ] || {
+        echo 'unsupported DMI characters' >&2; exit 2;
     }
-    ref=$(git -C "$root" rev-parse HEAD)
+else
+    for value in "$model" "$protected"; do
+        case "$value" in *'
+'*) echo 'unsupported model string' >&2; exit 2 ;; esac
+        printf '%s\n' "$value" | LC_ALL=C grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9 ._:+/-]*[a-zA-Z0-9])?$' &&
+            [ "${#value}" -le 128 ] || { echo 'unsupported model string' >&2; exit 2; }
+    done
+    [ "$model" != "$protected" ] || { echo 'target and protected models must differ' >&2; exit 2; }
 fi
-[ "${#ref}" -eq 40 ] || { echo 'stage2 ref must be a full 40-character commit SHA' >&2; exit 2; }
-case "$ref" in *[!0-9a-f]*) echo 'invalid commit SHA' >&2; exit 2 ;; esac
+validate_ref() {
+    [ "${#ref}" -eq 40 ] || { echo 'stage2 ref must be a full 40-character commit SHA' >&2; exit 2; }
+    case "$ref" in *[!0-9a-f]*) echo 'invalid commit SHA' >&2; exit 2 ;; esac
+}
+[ -z "$ref" ] || validate_ref
 python3 "$here/verify-source.py" "$src" >&2
+source_status=$(git -C "$root" status --porcelain --untracked-files=normal) || {
+    echo 'cannot verify source tree cleanliness' >&2; exit 2;
+}
+[ -z "$source_status" ] || { echo 'commit the reviewed source before building (even with --stage2-ref)' >&2; exit 2; }
+if [ -z "$ref" ]; then ref=$(git -C "$root" rev-parse HEAD); fi
+validate_ref
 [ "$(git -C "$root" cat-file -t "$ref")" = commit ] || {
     echo 'post-install ref is not an available reviewed Git commit' >&2; exit 2;
 }
 umask 077
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-mkdir -p "$work/root/xc0" "$work/root/usr/lib/partman/init.d" "$out_dir"
+mkdir -p "$work/root/xc0" "$work/root/usr/lib/partman/init.d" \
+    "$work/root/usr/lib/post-base-installer.d" "$out_dir"
 # Debian's initrd is merged-/usr. Never replace its /lib symlink with a directory.
 # Shared directory modes must not inherit the private builder umask either.
 chmod 0755 "$work/root" "$work/root/usr" "$work/root/usr/lib" \
-    "$work/root/usr/lib/partman" "$work/root/usr/lib/partman/init.d"
+    "$work/root/usr/lib/partman" "$work/root/usr/lib/partman/init.d" \
+    "$work/root/usr/lib/post-base-installer.d"
 out_dir=$(CDPATH='' cd -- "$out_dir" && pwd)
-iso_id=xc0-$profile-$mode-$(printf '%.12s' "$ref")
+iso_id=xc0-$hostname-$profile-$mode-$(printf '%.12s' "$ref")
 cp "$here/preseed/base.cfg" "$work/root/preseed.cfg"
 cp "$here/preseed/early.sh" "$here/preseed/select-disk.sh" \
-    "$here/preseed/late.sh" "$here/preseed/confirm.templates" "$work/root/xc0/"
+    "$here/preseed/late.sh" "$here/preseed/btrfs.sh" "$here/preseed/accounts.sh" \
+    "$here/preseed/boot-prepare.sh" "$here/preseed/grub-install-loki.sh" \
+    "$here/preseed/confirm.templates" "$work/root/xc0/"
+mkdir -p "$work/root/xc0/recipes"
+cp "$here/preseed/recipes/$layout.cfg" "$work/root/xc0/recipes/"
 cp "$here/preseed/00xc0-guard" "$work/root/usr/lib/partman/init.d/00xc0-guard"
 chmod 0755 "$work/root/usr/lib/partman/init.d/00xc0-guard"
-printf "MODE='%s'\nPROFILE='%s'\nHOSTNAME='%s'\nTARGET_SERIAL='%s'\nTARGET_DMI='%s'\nSTAGE2_REF='%s'\nISO_ID='%s'\n" \
-    "$mode" "$profile" "$hostname" "$serial" "$dmi" "$ref" "$iso_id" > "$work/root/xc0/install.conf"
+cp "$here/preseed/90xc0-boot" "$work/root/usr/lib/post-base-installer.d/90xc0-boot"
+chmod 0755 "$work/root/usr/lib/post-base-installer.d/90xc0-boot"
+python3 - "$mode" "$profile" "$ref" "$iso_id" "$hostname" "$target_mode" \
+    "$serial" "$dmi" "$model" "$protected" "$layout" "$here" \
+    "$work/root/xc0/install.conf" "$work/artifact.json" <<'PY'
+import json, pathlib, runpy, sys
+mode, profile, ref, iso_id, hostname, target_mode, serial, dmi, model, protected, layout, here, conf, artifact = sys.argv[1:]
+verifier = runpy.run_path(str(pathlib.Path(here) / 'verify-artifact.py'))
+hosts = json.loads((pathlib.Path(here) / 'hosts.json').read_text(), object_pairs_hook=verifier['_unique_object'])
+if set(hosts) != {'loki', 'thor'}:
+    sys.exit('unexpected host policy keys')
+policy = hosts[layout]
+if set(policy) != {'profile', 'layout', 'marius_uid', 'marius_gid', 'xcloud_uid', 'xcloud_gid'}:
+    sys.exit('unexpected host policy fields')
+if policy['profile'] != profile or policy['layout'] != layout:
+    sys.exit('host policy does not match the selected suite/layout')
+metadata = dict(policy, schema=3, iso_id=iso_id, hostname=hostname, mode=mode,
+                target_mode=target_mode, target_serial=serial, target_dmi=dmi,
+                target_model=model, protected_model=protected, config_ref=ref)
+verifier['_validate_common'](metadata, 'generated host policy')
+values = {key: metadata[value] for key, value in verifier['CONFIG_FIELDS'].items()}
+with open(conf, 'w') as f:
+    for key, value in values.items():
+        f.write(key + "='" + value.replace("'", "'\\''") + "'\n")
+with open(artifact, 'w') as f:
+    json.dump(metadata, f, sort_keys=True)
+    f.write('\n')
+PY
 : > "$work/root/xc0/authorized_keys"
 if [ -n "$keys" ]; then
     python3 "$here/validate-public-keys.py" "$keys"
@@ -117,13 +180,6 @@ with open(sys.argv[2], 'a') as f:
     f.write('d-i passwd/user-password-crypted password '+hashed+'\n')
 PY
 fi
-python3 - "$mode" "$profile" "$ref" "$iso_id" "$work/artifact.json" <<'PY'
-import json, sys
-mode, profile, ref, iso_id, path=sys.argv[1:]
-with open(path,'w') as f:
-    json.dump({'schema':1,'iso_id':iso_id,'mode':mode,'profile':profile,'config_ref':ref},f,sort_keys=True)
-    f.write('\n')
-PY
 xorriso -osirrox on -indev "$src" \
     -extract /install.amd/gtk/initrd.gz "$work/orig.gz" \
     -extract /boot/grub/grub.cfg "$work/grub.orig" \
@@ -166,7 +222,7 @@ if ! xorriso -indev "$src" -outdev "$partial" \
 fi
 chmod 0600 "$partial"
 digest=$(sha256sum "$partial" | cut -d' ' -f1)
-printf '%s  %s\n' "$digest" "$out" > "$out.sha256"
+printf '%s  %s\n' "$digest" "${out##*/}" > "$out.sha256"
 python3 - "$work/artifact.json" "$digest" "$out.manifest.json" <<'PY'
 import json,sys
 data=json.load(open(sys.argv[1]))

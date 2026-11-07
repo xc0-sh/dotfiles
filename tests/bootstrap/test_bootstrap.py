@@ -114,7 +114,7 @@ class BootstrapTests(unittest.TestCase):
         home.mkdir()
         # Stub the passwd record and stat only; no host account is changed.
         prefix = 'TARGET_USER=alice; getent() { printf "alice:x:%s:1000::%s:/bin/bash\\n" "$uid" "$home"; }; stat() { printf "%s\\n" "$owner"; }; '
-        for uid, owner, valid in ((1000, 1000, True), (0, 0, False), (999, 999, False),
+        for uid, owner, valid in ((1000, 1000, True), (1001, 1001, True), (0, 0, False), (999, 999, False),
                                   (65534, 65534, False), (1000, 0, False)):
             with self.subTest(uid=uid, owner=owner):
                 self.bash('uid=$1; owner=$2; home=$3; ' + prefix + 'check_user', uid, owner, home, ok=valid)

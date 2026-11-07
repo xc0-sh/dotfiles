@@ -33,6 +33,7 @@ jobs:
           set -eu
           files=$(git ls-files '*.sh')
           if [ -n "$files" ]; then shellcheck $files; else echo "no shell scripts yet"; fi
+          shellcheck -s sh iso/preseed/00xc0-guard iso/preseed/90xc0-boot
 
       - name: Installer and bootstrap regression tests
         run: |
@@ -45,3 +46,4 @@ jobs:
           done
           python3 -m json.tool iso/upstream.json >/dev/null
           python3 -m json.tool iso/ventoy.json >/dev/null
+          python3 -m json.tool iso/hosts.json >/dev/null

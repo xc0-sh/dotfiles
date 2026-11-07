@@ -1,0 +1,18 @@
+{
+  "loki": {
+    "profile": "testing",
+    "layout": "loki",
+    "marius_uid": "1001",
+    "marius_gid": "1001",
+    "xcloud_uid": "1000",
+    "xcloud_gid": "1000"
+  },
+  "thor": {
+    "profile": "stable",
+    "layout": "thor",
+    "marius_uid": "1001",
+    "marius_gid": "1001",
+    "xcloud_uid": "1000",
+    "xcloud_gid": "1000"
+  }
+}

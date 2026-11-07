@@ -44,13 +44,18 @@ def inspect(iso):
         modes = dict(entries(members[-1]))
         if "lib" in modes or any(name.startswith("lib/") for name in modes):
             raise ValueError("overlay would clobber Debian's /lib symlink")
-        for name in (".", "usr", "usr/lib", "usr/lib/partman", "usr/lib/partman/init.d"):
+        for name in (".", "usr", "usr/lib", "usr/lib/partman", "usr/lib/partman/init.d",
+                     "usr/lib/post-base-installer.d"):
             if not stat.S_ISDIR(modes.get(name, 0)) or stat.S_IMODE(modes[name]) != 0o755:
                 raise ValueError("incorrect shared directory mode: " + name)
         guard = modes.get("usr/lib/partman/init.d/00xc0-guard", 0)
         if not stat.S_ISREG(guard) or not guard & 0o111:
             raise ValueError("missing executable partition guard")
-        for name in ("preseed.cfg", "xc0/install.conf", "xc0/early.sh", "xc0/late.sh"):
+        boot_hook = modes.get("usr/lib/post-base-installer.d/90xc0-boot", 0)
+        if not stat.S_ISREG(boot_hook) or not boot_hook & 0o111:
+            raise ValueError("missing executable pre-kernel boot hook")
+        for name in ("preseed.cfg", "xc0/install.conf", "xc0/early.sh", "xc0/late.sh",
+                     "xc0/btrfs.sh", "xc0/accounts.sh", "xc0/boot-prepare.sh", "xc0/grub-install-loki.sh"):
             if not stat.S_ISREG(modes.get(name, 0)):
                 raise ValueError("missing installer file: " + name)
     print("overlay metadata OK: merged-/usr preserved, shared modes correct, guard executable")

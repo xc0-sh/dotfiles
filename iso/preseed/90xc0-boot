@@ -1,0 +1,7 @@
+#!/bin/sh
+# bootstrap-base only logs a failing post-base-installer hook. Block in place.
+sh -eu /xc0/boot-prepare.sh || {
+    trap '' HUP INT TERM
+    echo 'xc0 BLOCKED: pre-kernel ESP preparation failed' >&2
+    while :; do sleep 3600 || :; done
+}

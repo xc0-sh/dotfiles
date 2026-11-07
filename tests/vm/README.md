@@ -28,7 +28,14 @@ installation or desktop success.
 3. Switch boot order to the guest disk, start it and unlock its test LUKS key.
    `send-text.py --file` types private test input without logging the value.
 4. Run `acceptance.sh` without `--desktop`: it must prove the base and show the
-   next-step Git commands, with no Hyprland running. Base acceptance ends here.
+    next-step Git commands, with no Hyprland running. Base acceptance ends here.
+   Build the test ISO with `--hostname loki` or `--hostname thor`, then use
+   `acceptance.sh testing marius --host loki` or
+   `acceptance.sh stable marius --host thor` to assert the exact normal account
+   IDs, locked xcloud password, home owners, UUID/subvolume layout, LUKS2 mapper
+   and correctly sized boot partitions. These are required new-layout checks;
+   old generic VM evidence does not prove them. VM sudo now requires the
+   disposable marius password too; no NOPASSWD rule is installed.
 5. Separately test configuration scripts AFTER first boot. Clone/check out the
    recorded Git commit, run the scripts, then log into Hyprland. Any temporary
    autologin used to exercise a disposable VM must not be a production default.
@@ -47,3 +54,11 @@ builder. Never publish the private test ISO or record a test password in a log.
 
 NVIDIA, real Wi-Fi, sleep/resume, Yoga touch/pen, audio hardware and Secure Boot
 remain physical acceptance checks even when every VM gate passes.
+
+The new layout implementation also needs fresh multi-disk UEFI rehearsals with
+an existing ESP and LVM/MD/data sentinels on the non-target file-backed disk.
+Check strict nested-mount restoration, loki's signed GRUB diversion, and a
+testing kernel upgrade followed by encrypted reboot. Model-confirm deliberately
+rejects QEMU: its exact production image must refuse there, not be treated as
+having completed a physical thor installation. No real VM layout pass is claimed
+by the file-backed/static unit tests.
