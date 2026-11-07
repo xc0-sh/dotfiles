@@ -74,12 +74,12 @@ class HostLayoutTests(unittest.TestCase):
             recipe = (PRESEED / f"recipes/{host}.cfg").read_text()
             self.assertIn(f"partman-auto/choose_recipe select xc0-{host}-crypto-btrfs", recipe)
             self.assertIn(f"xc0-{host}-crypto-btrfs ::", recipe)
-            self.assertIn("1074 1074 1074 free", recipe)
+            self.assertIn("1075 1075 1075 free", recipe)
             self.assertIn("$lvmok{ } lv_name{ root }", recipe)
             self.assertEqual(recipe.count("filesystem{ btrfs }"), 1)
             for forbidden in ("method{ swap }", "method{ lvm }", "in_vg{", "WDS200", "@games"):
                 self.assertNotIn(forbidden, recipe)
-        self.assertIn("1074 1074 1074 ext4", (PRESEED / "recipes/thor.cfg").read_text())
+        self.assertIn("1075 1075 1075 ext4", (PRESEED / "recipes/thor.cfg").read_text())
         self.assertNotIn("filesystem{ ext4 }", (PRESEED / "recipes/loki.cfg").read_text())
 
     def test_strict_reshape_and_pre_kernel_hook_are_not_desktop_setup(self):
