@@ -3,6 +3,7 @@
 # with an automated install entry as the boot default (UEFI).
 #
 # Usage: iso/build.sh <netinst.iso> [profile]
+#   <netinst.iso>: the signed Debian 13 release netinst (debian-13.x.y-amd64-netinst.iso)
 #   profile: testing (default; loki) or stable (trixie + backports)
 #
 # Secrets come from $XC0_SECRETS (default ~/.config/xc0-iso), never from the repo:
@@ -19,8 +20,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 out_dir=${OUT_DIR:-$here/../build}
 
 case "$profile" in
-    testing) suite=testing ;;
-    stable)  suite=trixie ;;
+    testing) suite=testing; services="security" ;;
+    stable)  suite=trixie;  services="security, updates, backports" ;;
     *) echo "unknown profile: $profile" >&2; exit 2 ;;
 esac
 
@@ -39,7 +40,7 @@ umask 077
 mkdir -p "$work/root/xc0" "$out_dir"
 
 # preseed: profile values, then secrets appended (never substituted into the template)
-sed "s/@@SUITE@@/$suite/" "$here/preseed/base.cfg" > "$work/root/preseed.cfg"
+sed -e "s/@@SUITE@@/$suite/" -e "s/@@SERVICES@@/$services/" "$here/preseed/base.cfg" > "$work/root/preseed.cfg"
 {
     echo "### appended by build.sh from $secrets"
     printf 'd-i partman-crypto/passphrase password %s\n' "$(cat "$secrets/luks-passphrase")"
