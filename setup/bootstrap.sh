@@ -296,7 +296,7 @@ install_packages() {
         local policy
         policy=$(apt-cache policy)
         check_apt_suites <<< "$policy"
-        block_service_starts
+        block_service_starts /var/tmp
     fi
     DEBIAN_FRONTEND=noninteractive run apt-get --assume-yes --no-install-recommends --no-remove \
         -o APT::Get::AllowUnauthenticated=false \

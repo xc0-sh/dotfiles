@@ -58,7 +58,9 @@ if [ "$mode" = vm-test ]; then
     done
 else
     [ -z "$secrets" ] || { echo 'release mode refuses embedded credentials' >&2; exit 2; }
-    [ -n "$serial" ] && [ -n "$dmi" ] || { echo 'release mode needs target serial AND DMI product' >&2; exit 2; }
+    if [ -z "$serial" ] || [ -z "$dmi" ]; then
+        echo 'release mode needs target serial AND DMI product' >&2; exit 2
+    fi
 fi
 # Restrict config values rather than source arbitrary caller-supplied shell text.
 case "$serial" in *[!a-zA-Z0-9_.:-]*) echo 'unsupported serial characters' >&2; exit 2 ;; esac

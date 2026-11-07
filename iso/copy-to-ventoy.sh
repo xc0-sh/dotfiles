@@ -51,9 +51,9 @@ trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
 copy_verified() {
-    [ ! -d "$2" ] && [ ! -d "$2.new" ] || {
-        echo "refusing directory destination: $2" >&2; exit 2;
-    }
+    if [ -d "$2" ] || [ -d "$2.new" ]; then
+        echo "refusing directory destination: $2" >&2; exit 2
+    fi
     cp --remove-destination -- "$1" "$2.new"
     sync
     cmp -- "$1" "$2.new"

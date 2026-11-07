@@ -6,7 +6,7 @@ usage() {
     echo 'usage: tests/vm/create.sh ISO NAME [DISK_SERIAL [DMI_PRODUCT]]' >&2
     echo 'NAME must start xc0-e2e-. Existing domains/disks are never overwritten.' >&2
 }
-[ "$#" -ge 2 ] && [ "$#" -le 4 ] || { usage; exit 2; }
+if [ "$#" -lt 2 ] || [ "$#" -gt 4 ]; then usage; exit 2; fi
 iso=$(realpath "$1") name=$2 serial=${3:-XC0_TEST_DISK} product=${4:-}
 case "$name" in xc0-e2e-*) : ;; *) usage; exit 2 ;; esac
 case "$name$serial" in *[!a-zA-Z0-9_-]*) echo 'invalid name/serial' >&2; exit 2 ;; esac
@@ -16,7 +16,7 @@ v() { sudo -n virsh -c qemu:///system "$@"; }
 if v dominfo "$name" >/dev/null 2>&1; then echo 'domain already exists' >&2; exit 2; fi
 disk=/var/lib/libvirt/images/$name.qcow2
 media=/var/lib/libvirt/images/$name.iso
-[ ! -e "$disk" ] && [ ! -e "$media" ] || { echo 'storage already exists' >&2; exit 2; }
+if [ -e "$disk" ] || [ -e "$media" ]; then echo 'storage already exists' >&2; exit 2; fi
 sudo -n install -m 0600 "$iso" "$media"
 set --
 if [ -n "$product" ]; then
