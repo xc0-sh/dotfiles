@@ -114,6 +114,8 @@ validate_persistent_answers() {
         db_get "$question" || return 1
         [ "$RET" = "$remove_existing" ] || return 1
     done
+}
+validate_partition_choice() {
     db_get partman/choose_partition || return 1
     [ "$RET" = finish ] || return 1
 }
@@ -183,11 +185,12 @@ for question in $confirmation_questions; do
     db_get "$question"
     [ "$RET" = true ] || exit 1
 done
-db_set partman/choose_partition finish
+    db_set partman/choose_partition finish
 db_fset partman/choose_partition seen true
 db_get partman/choose_partition
 [ "$RET" = finish ] || exit 1
 validate_confirmation_answers
+validate_partition_choice
 validate_persistent_answers
 umask 077
 printf '%s\n' "$authorization" > /tmp/xc0-authorized

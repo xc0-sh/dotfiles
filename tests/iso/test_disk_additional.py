@@ -24,7 +24,6 @@ PERSISTENT_ANSWERS = (
     "grub-installer/bootdev",
     "partman-lvm/device_remove_lvm",
     "partman-md/device_remove_md",
-    "partman/choose_partition",
 )
 
 
@@ -190,7 +189,6 @@ class DiskAdditionalTests(unittest.TestCase):
             ("grub-installer/bootdev", "/dev/nvme1n1", "/dev/nvme0n1"),
             ("partman-lvm/device_remove_lvm", "false", "true"),
             ("partman-md/device_remove_md", "false", "true"),
-            ("partman/choose_partition", "manual", "finish"),
         )
         for question, wrong, expected in answers:
             for value in ("", wrong):
@@ -201,8 +199,17 @@ class DiskAdditionalTests(unittest.TestCase):
 
     def test_partman_consuming_confirmation_answers_does_not_revoke_disk_authorization(self):
         marker = self.authorize()
-        for question in CONFIRMATIONS:
+        for question in (*CONFIRMATIONS, "partman/choose_partition"):
             self.set_answer(question, "false")  # partman-base db_reset after accepting the write
+        for args in (("--validate-authorized",), ()):
+            with self.subTest(args=args):
+                result = self.disk.run_select(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.disk.marker.read_text(), marker)
+
+    def test_partition_choice_is_only_a_pre_marker_action_not_persistent_authorization(self):
+        marker = self.authorize()
+        self.set_answer("partman/choose_partition", "default")
         for args in (("--validate-authorized",), ()):
             with self.subTest(args=args):
                 result = self.disk.run_select(*args)
