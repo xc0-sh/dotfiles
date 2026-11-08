@@ -100,7 +100,7 @@ for image in /boot/initrd.img-*; do
 done
 [ "$initrds" -gt 0 ]
 grep -Eq '^[[:space:]]*linux[[:space:]].*rootflags=([^[:space:]]*,)?subvol=@([,[:space:]]|$)' /boot/grub/grub.cfg
-if [ "$LAYOUT" = loki ]; then esp=/boot; else esp=/boot/efi; fi
+esp=/boot/efi
 [ -s "$esp/EFI/debian/shimx64.efi" ] && [ -s "$esp/EFI/debian/grubx64.efi" ]
 # Match the installed Debian signed payloads, not merely plausible filenames.
 cmp /usr/lib/shim/shimx64.efi.signed "$esp/EFI/debian/shimx64.efi"

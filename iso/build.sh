@@ -127,7 +127,7 @@ iso_id=xc0-$hostname-$profile-$mode-$(printf '%.12s' "$ref")
 cp "$here/preseed/base.cfg" "$work/root/preseed.cfg"
 cp "$here/preseed/early.sh" "$here/preseed/select-disk.sh" \
     "$here/preseed/late.sh" "$here/preseed/btrfs.sh" "$here/preseed/accounts.sh" \
-    "$here/preseed/boot-prepare.sh" "$here/preseed/grub-install-loki.sh" \
+    "$here/preseed/boot-prepare.sh" \
     "$here/preseed/confirm.templates" "$work/root/xc0/"
 mkdir -p "$work/root/xc0/recipes"
 cp "$here/preseed/recipes/$layout.cfg" "$work/root/xc0/recipes/"

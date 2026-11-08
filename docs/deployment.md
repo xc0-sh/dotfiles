@@ -48,8 +48,8 @@ The OS disk is GPT with no disk-backed swap:
   `@snapshots` `/.snapshots`, `@var_log` `/var/log`, `@var_tmp` `/var/tmp`,
   `@aios` `/var/lib/aios`, `@srv_aios` `/srv/aios`, `@xccode`
   `/var/lib/xcloud/xccode`; options `noatime,compress=zstd:1`.
-* **loki/testing/forky:** 1 GiB FAT32 ESP at `/boot`, LUKS2 → LVM → one Btrfs
-  root LV. Flat mounts are `@` `/`, `@home` `/home`, `@pkg`
+* **loki/testing/forky:** 1 GiB FAT32 ESP at `/boot/efi`, 1 GiB ext4 `/boot`,
+  LUKS2 → LVM → one Btrfs root LV. Flat mounts are `@` `/`, `@home` `/home`, `@pkg`
   `/var/cache/pacman/pkg`, `@log` `/var/log`, and `@swap` `/swap`; options
   `noatime,compress=zstd:3`. The empty `@swap` directory gets `+C` before copying;
   no swapfile or pacman setup is created.
@@ -57,9 +57,9 @@ The OS disk is GPT with no disk-backed swap:
 Both use mapper `xcloud_root_crypt`. The partition recipe requests 1075 decimal MB
 for aligned 1 GiB boot partitions; a pre-kernel check requires exactly 1,073,741,824
 bytes on the authorized OS disk. A VM rehearsal measured that 1074 MB produced
-only 1,072,693,248 bytes (1023 MiB), so that request is rejected. d-i mounts Loki's ESP at `/boot/efi`; the hook
-moves it to `/boot` before kernel installation and adjusts fstab. A local GRUB
-diversion preserves Debian's signed implementation while targeting `/boot`.
+only 1,072,693,248 bytes (1023 MiB), so that request is rejected. An earlier
+Loki rehearsal showed dpkg cannot create kernel backup hard links on FAT; Loki
+therefore uses ext4 `/boot`, while the ESP remains at `/boot/efi`.
 The Btrfs reshape preserves installed metadata, parks nested mounts, renames the
 live crypt mapper along with crypttab, and verifies initramfs and GRUB before
 publishing completion. Thor's WDS200 data disk is never formatted, mounted as
@@ -173,7 +173,7 @@ resolving it. Unexpected symlinks/non-regular destinations are refused.
 The first existing `/ventoy/ventoy.json` is saved as `ventoy.json.before-xc0` only
 when that backup does not already exist; repeat deployment never overwrites it.
 Only the visual assets from
-`/opt/xcloud/claude/ventoy/stick-tree/ventoy/theme/xcloud/` are imported (the source
+`/opt/xcloud/claude/xcloud/projects/ventoy/stick-tree/ventoy/theme/xcloud/` are imported (the source
 directory, ancestors and assets must not be symlinks). The reviewed `ventoy.json`
 and F6 `ventoy_grub.cfg` replace the old menu; no old install scripts, templates
 or instructions are copied. The ISOs contain their own preseed, so Ventoy has no

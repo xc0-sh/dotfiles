@@ -14,7 +14,7 @@ layout() {
         loki)
             options=noatime,compress=zstd:3
             subvolumes='@home:/home @pkg:/var/cache/pacman/pkg @log:/var/log @swap:/swap'
-            esp_mount=/boot ;;
+            esp_mount=/boot/efi ;;
         *) die 'unknown layout' ;;
     esac
 }
@@ -36,12 +36,8 @@ fstab() {
         fi
         printf 'UUID=%s %s btrfs subvol=%s,%s 0 0\n' "$1" "$mp" "$sv" "$mount_options"
     done
-    if [ "$LAYOUT" = thor ]; then
-        [ -n "$2" ]
-        printf 'UUID=%s /boot ext4 defaults 0 2\n' "$2"
-    else
-        [ -z "$2" ]
-    fi
+    [ -n "$2" ] || die 'missing ext4 /boot UUID'
+    printf 'UUID=%s /boot ext4 defaults 0 2\n' "$2"
     printf 'UUID=%s %s vfat umask=0077 0 2\n' "$3" "$esp_mount"
 }
 # Pure fixture interfaces: no config reads, commands on devices, or mutations.

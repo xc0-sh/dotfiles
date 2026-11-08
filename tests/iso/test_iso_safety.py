@@ -1306,7 +1306,7 @@ exit 0
         self.assertIn(REF, (self.root / "etc/xc0-next-steps").read_text())
         self.assertIn("layout=loki\nmarius=1001:1001\nxcloud=1000:1000\n", status)
         self.assertEqual((self.root / "accounts.log").read_text().splitlines(), ["prepare", "--check"])
-        self.assertEqual((self.root / "boot/EFI/debian/grub.cfg").read_text(),
+        self.assertEqual((self.root / "boot/efi/EFI/debian/grub.cfg").read_text(),
                          "search --no-floppy --fs-uuid --set=root fixture-boot-uuid\n"
                          "set prefix=($root)/grub\nconfigfile $prefix/grub.cfg\n")
         for path in (self.root / "var/lib/xc0", self.root / "var/lib/xc0/install-status",
@@ -1350,7 +1350,7 @@ exit 0
         self.assertIn("Suites: trixie", (self.root / "var/lib/xc0/debian.sources.installer").read_text())
 
     def test_wrong_signed_payload_never_completes(self):
-        (self.root / "boot/EFI/debian/grubx64.efi").write_bytes(b"wrong loader")
+        (self.root / "boot/efi/EFI/debian/grubx64.efi").write_bytes(b"wrong loader")
         self.assert_failed_without_success_alias(self.run_late())
 
     def test_empty_boot_uuid_probes_never_complete(self):

@@ -41,7 +41,7 @@ class HostLayoutTests(unittest.TestCase):
     def test_uuid_fstab_has_correct_boots_options_and_no_swap_device(self):
         for host in ("loki", "thor"):
             result = subprocess.run(["sh", str(PRESEED / "btrfs.sh"), "--fstab", host,
-                                     "root-uuid", "boot-uuid" if host == "thor" else "", "esp-uuid"],
+                                     "root-uuid", "boot-uuid", "esp-uuid"],
                                     text=True, capture_output=True, check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
             entries = {fields[1]: fields for line in result.stdout.splitlines()
@@ -52,19 +52,16 @@ class HostLayoutTests(unittest.TestCase):
             for mountpoint, fields in entries.items():
                 if fields[2] == "btrfs" and mountpoint != "/swap":
                     self.assertIn("noatime,compress=zstd:" + level, fields[3])
-            if host == "thor":
-                self.assertEqual(entries["/boot"][0:3], ["UUID=boot-uuid", "/boot", "ext4"])
-                self.assertEqual(entries["/boot/efi"][0:3], ["UUID=esp-uuid", "/boot/efi", "vfat"])
-            else:
-                self.assertEqual(entries["/boot"][0:3], ["UUID=esp-uuid", "/boot", "vfat"])
-                self.assertNotIn("/boot/efi", entries)
+            self.assertEqual(entries["/boot"][0:3], ["UUID=boot-uuid", "/boot", "ext4"])
+            self.assertEqual(entries["/boot/efi"][0:3], ["UUID=esp-uuid", "/boot/efi", "vfat"])
+            if host == "loki":
                 self.assertEqual(entries["/swap"][3], "subvol=@swap,noatime")
                 self.assertNotIn("nodatacow", entries["/swap"][3])
-        bad = subprocess.run(["sh", str(PRESEED / "btrfs.sh"), "--fstab", "loki", "bad uuid", "", "esp"],
+        bad = subprocess.run(["sh", str(PRESEED / "btrfs.sh"), "--fstab", "loki", "bad uuid", "boot", "esp"],
                              capture_output=True, text=True)
         self.assertNotEqual(bad.returncode, 0)
         self.assertEqual(bad.stdout, "")
-        empty = subprocess.run(["sh", str(PRESEED / "btrfs.sh"), "--fstab", "loki", "", "", "esp"],
+        empty = subprocess.run(["sh", str(PRESEED / "btrfs.sh"), "--fstab", "loki", "", "boot", "esp"],
                                capture_output=True, text=True)
         self.assertNotEqual(empty.returncode, 0)
         self.assertEqual(empty.stdout, "")
@@ -80,7 +77,7 @@ class HostLayoutTests(unittest.TestCase):
             for forbidden in ("method{ swap }", "method{ lvm }", "in_vg{", "WDS200", "@games"):
                 self.assertNotIn(forbidden, recipe)
         self.assertIn("1075 1075 1075 ext4", (PRESEED / "recipes/thor.cfg").read_text())
-        self.assertNotIn("filesystem{ ext4 }", (PRESEED / "recipes/loki.cfg").read_text())
+        self.assertIn("1075 1075 1075 ext4", (PRESEED / "recipes/loki.cfg").read_text())
 
     def test_strict_reshape_and_pre_kernel_hook_are_not_desktop_setup(self):
         script = (PRESEED / "btrfs.sh").read_text()
@@ -96,13 +93,9 @@ class HostLayoutTests(unittest.TestCase):
         hook = (PRESEED / "90xc0-boot").read_text()
         self.assertIn("while :; do sleep 3600", hook)
         prepare = (PRESEED / "boot-prepare.sh").read_text()
-        self.assertIn('loki) esp_mount=/target/boot/efi', prepare)
-        self.assertIn('thor) esp_mount=/target/boot/efi', prepare)
-        self.assertIn('umount /target/boot/efi', prepare)
-        self.assertIn('mount -t vfat -o umask=0077 "$esp" /target/boot', prepare)
-        self.assertIn('link_in_boot = no', prepare)
-        self.assertIn('dpkg-divert --local --add --rename', prepare)
-        self.assertIn('--efi-directory=/boot', (PRESEED / "grub-install-loki.sh").read_text())
+        self.assertIn('case "$LAYOUT" in thor|loki) esp_mount=/target/boot/efi', prepare)
+        self.assertIn('boot=$(awk', prepare)
+        self.assertNotIn('dpkg-divert', prepare)
         base = (PRESEED / "base.cfg").read_text()
         self.assertLess(base.index("sh -eu /xc0/btrfs.sh"), base.index("in-target sh /root/xc0-late.sh"))
 
@@ -206,12 +199,12 @@ class BootPreparationFixtureTests(unittest.TestCase):
         self.config = self.root / "install.conf"
         self.config.write_text("LAYOUT=loki\nHOSTNAME=loki\n")
         (self.root / "select-disk.sh").write_text("#!/bin/sh\n[ \"$1\" = --validate-authorized ]\n")
-        (self.target / "etc/fstab").write_text("UUID=root / btrfs defaults 0 0\nUUID=esp /boot/efi vfat defaults 0 2\n")
+        (self.target / "etc/fstab").write_text("UUID=root / btrfs defaults 0 0\nUUID=boot /boot ext4 defaults 0 2\nUUID=esp /boot/efi vfat defaults 0 2\n")
         self.mounts = self.root / "mounts"
-        self.mounts.write_text(f"{self.root}/esp-device {self.target}/boot/efi vfat rw 0 0\n")
+        self.mounts.write_text(f"{self.root}/boot-device {self.target}/boot ext4 rw 0 0\n"
+                               f"{self.root}/esp-device {self.target}/boot/efi vfat rw 0 0\n")
         replacements = {
             "/xc0/install.conf": str(self.config), "/xc0/select-disk.sh": str(self.root / "select-disk.sh"),
-            "/xc0/grub-install-loki.sh": str(PRESEED / "grub-install-loki.sh"),
             "/tmp/xc0-authorized": str(self.root / "authorized"),
             "/proc/mounts": str(self.mounts), "/target": str(self.target),
         }
@@ -238,7 +231,10 @@ class BootPreparationFixtureTests(unittest.TestCase):
                     if args[-1] not in [str(root / 'esp-device'), str(root / 'boot-device')]: refuse()
                     print(os.environ.get('XC0_PARENT', 'xc0-fixture-disk'))
                 elif tool == 'blockdev' and args[0] == '--getsize64':
-                    print(os.environ.get('XC0_BOOT_BYTES', '1073741824'))
+                    if Path(args[-1]).name == os.environ.get('XC0_BAD_PARTITION'):
+                        print('1072693248')
+                    else:
+                        print('1073741824')
                 elif tool == 'blkid' and args == ['-p', '-s', 'PTTYPE', '-o', 'value', str(root / 'disk')]:
                     print(os.environ.get('XC0_TABLE', 'gpt'))
                 elif tool == 'dpkg-divert' and args == ['--local', '--add', '--rename', '--divert',
@@ -259,7 +255,7 @@ class BootPreparationFixtureTests(unittest.TestCase):
                 path.symlink_to(root / 'esp-files', target_is_directory=True)
             else: refuse()
         ''')
-        for name in ("in-target", "readlink", "mount", "umount"):
+        for name in ("in-target", "readlink"):
             executable = self.bin / name
             executable.write_text(f"#!{sys.executable}\n" + commands)
             executable.chmod(0o755)
@@ -273,48 +269,36 @@ class BootPreparationFixtureTests(unittest.TestCase):
         path = self.root / "commands.jsonl"
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
-    def test_gpt_parent_and_exact_size_rejections_precede_any_boot_mutation(self):
-        for changes in ({"XC0_TABLE": "dos"}, {"XC0_PARENT": "not-authorized"}, {"XC0_BOOT_BYTES": "1073741823"}):
+    def test_gpt_parent_and_boot_partition_size_rejections_fail_closed(self):
+        for changes in ({"XC0_TABLE": "dos"}, {"XC0_PARENT": "not-authorized"},
+                        {"XC0_BAD_PARTITION": "boot-device"}):
             with self.subTest(changes=changes):
                 result = self.run_hook(**changes)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertFalse(any(event[0] in ("mount", "umount") for event in self.events()))
-                self.assertFalse((self.target / "boot/EFI").exists())
-                self.assertFalse((self.target / "usr/sbin/grub-install").exists())
-                self.assertFalse((self.target / "etc/kernel-img.conf").exists())
-                self.assertIn("xc0 boot preparation exit: status=1",
-                              (self.target / "var/log/xc0-boot-prepare.log").read_text())
-                (self.root / "commands.jsonl").unlink()
+                log = (self.target / "var/log/xc0-boot-prepare.log").read_text()
+                self.assertNotIn("/boot partition validated", log)
+                self.assertEqual((self.target / "etc/fstab").read_text().count("UUID="), 3)
+                self.assertIn("xc0 boot preparation exit: status=1", log)
+                (self.root / "commands.jsonl").unlink(missing_ok=True)
+                (self.target / "var/log/xc0-boot-prepare.log").unlink(missing_ok=True)
 
-    def test_loki_uses_existing_esp_at_boot_and_installs_persistent_signed_grub_route(self):
-        result = self.run_hook()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue((self.target / "boot/EFI").is_dir())
-        self.assertIn("UUID=esp /boot vfat", (self.target / "etc/fstab").read_text())
-        self.assertIn("link_in_boot = no", (self.target / "etc/kernel-img.conf").read_text())
-        self.assertIn("--efi-directory=/boot", (self.target / "usr/sbin/grub-install").read_text())
-        self.assertTrue(any("dpkg-divert" in event for event in self.events()))
-        self.assertEqual([event[0] for event in self.events() if event[0] in ("mount", "umount")],
-                         ["umount", "mount"])
-        log = (self.target / "var/log/xc0-boot-prepare.log").read_text()
-        self.assertIn("Loki ESP remounted at /boot", log)
-        self.assertIn("Loki signed grub-install diversion installed", log)
-        self.assertIn("xc0 boot preparation exit: status=0", log)
-
-    def test_loki_refuses_unexpected_boot_contents_before_grub_changes(self):
-        (self.target / "boot/unexpected-kernel").touch()
-        result = self.run_hook()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse(any("dpkg-divert" in event for event in self.events()))
-
-    def test_thor_only_validates_its_two_boot_partitions(self):
-        self.config.write_text("LAYOUT=thor\nHOSTNAME=thor\n")
-        self.mounts.write_text(f"{self.root}/esp-device {self.target}/boot/efi vfat rw 0 0\n"
-                               f"{self.root}/boot-device {self.target}/boot ext4 rw 0 0\n")
-        result = self.run_hook()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(any(event[0] in ("mount", "umount") or "dpkg-divert" in event for event in self.events()))
-        self.assertEqual(sum("blockdev" in event for event in self.events()), 2)
+    def test_both_hosts_validate_the_same_esp_and_ext4_boot_architecture(self):
+        for host in ("loki", "thor"):
+            with self.subTest(host=host):
+                self.config.write_text(f"LAYOUT={host}\nHOSTNAME={host}\n")
+                result = self.run_hook()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                log = (self.target / "var/log/xc0-boot-prepare.log").read_text()
+                self.assertIn("exact 1 GiB ESP validated", log)
+                self.assertIn(f"{host} /boot partition validated", log)
+                events = self.events()
+                self.assertEqual(sum(1 for event in events if event[0] == "in-target"
+                                     and "blockdev" in event), 2)
+                self.assertFalse(any(event[0] in ("mount", "umount") for event in events))
+                self.assertIn("/boot ext4", (self.target / "etc/fstab").read_text())
+                self.assertIn("/boot/efi vfat", (self.target / "etc/fstab").read_text())
+                (self.root / "commands.jsonl").unlink(missing_ok=True)
+                (self.target / "var/log/xc0-boot-prepare.log").unlink(missing_ok=True)
 
 
 class AccountFixtureTests(unittest.TestCase):

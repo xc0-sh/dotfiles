@@ -17,7 +17,7 @@ commit and commands. No moving GitHub key feed or production NOPASSWD rule is in
 `hosts.json` supplies the approved suite/layout and normal user/group IDs.
 `early.sh` emits the selected expert recipe and marius's UID; `btrfs.sh` reshapes
 the installed base outside the chroot before `late.sh` finalizes it in-target.
-The pre-kernel hook handles loki's ESP-at-`/boot` requirement. Schema 3 binds the
+The pre-kernel hook validates the ESP and separate ext4 `/boot` on both hosts. Schema 3 binds the
 layout and identities to the actual initrd, manifest and embedded metadata.
 No mount/device operation is exercised by the file-backed/static unit tests.
 

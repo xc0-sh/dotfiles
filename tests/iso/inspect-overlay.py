@@ -55,7 +55,7 @@ def inspect(iso):
         if not stat.S_ISREG(boot_hook) or not boot_hook & 0o111:
             raise ValueError("missing executable pre-kernel boot hook")
         for name in ("preseed.cfg", "xc0/install.conf", "xc0/early.sh", "xc0/late.sh",
-                     "xc0/btrfs.sh", "xc0/accounts.sh", "xc0/boot-prepare.sh", "xc0/grub-install-loki.sh"):
+                      "xc0/btrfs.sh", "xc0/accounts.sh", "xc0/boot-prepare.sh"):
             if not stat.S_ISREG(modes.get(name, 0)):
                 raise ValueError("missing installer file: " + name)
     print("overlay metadata OK: merged-/usr preserved, shared modes correct, guard executable")

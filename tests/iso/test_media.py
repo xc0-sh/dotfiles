@@ -683,7 +683,7 @@ class CopyDeploymentTests(unittest.TestCase):
         self.assertIn('[ -b "$partition" ]', script)
         self.assertIn('[ -b "$parent" ]', script)
         script = script.replace('[ -b ', '[ -f ')
-        source = "theme_source=/opt/xcloud/claude/ventoy/stick-tree/ventoy/theme/xcloud"
+        source = "theme_source=/opt/xcloud/claude/xcloud/projects/ventoy/stick-tree/ventoy/theme/xcloud"
         self.assertEqual(script.count(source), 1)
         script = script.replace(source, "theme_source=" + shlex.quote(str(theme or self.theme)))
         (self.scripts / "copy-to-ventoy.sh").write_text(script, encoding="utf-8")

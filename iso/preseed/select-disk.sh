@@ -36,9 +36,10 @@ case "$MODE:${TARGET_MODE:-}" in
             printf '%s\n' "$value" | LC_ALL=C grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9 ._:+/-]*[a-zA-Z0-9])?$' &&
                 [ "${#value}" -le 128 ] || exit 1
         done
-        case "$(printf '%s' "$product" | tr '[:lower:]' '[:upper:]')" in
-            *QEMU*|*KVM*|*"STANDARD PC"*) exit 1 ;;
-        esac
+        # d-i BusyBox tr does not implement GNU [:lower:]/[:upper:] classes.
+        if printf '%s\n' "$product" | LC_ALL=C grep -Eiq 'qemu|kvm|standard pc'; then
+            exit 1
+        fi
         ;;
     *) exit 1 ;;
 esac

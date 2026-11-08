@@ -36,7 +36,7 @@ Sudo is authenticated on both release and VM-test installs; no NOPASSWD shortcut
 | Host | OS disk (GPT, no disk swap) | Flat Btrfs subvolumes |
 |---|---|---|
 | thor | 1 GiB FAT32 ESP `/boot/efi`; 1 GiB ext4 `/boot`; LUKS2 → LVM → one Btrfs LV | `@`, `@home`, `@snapshots`, `@var_log`, `@var_tmp`, `@aios`, `@srv_aios`, `@xccode`; `noatime,compress=zstd:1` |
-| loki | 1 GiB FAT32 ESP `/boot`; LUKS2 → LVM → one Btrfs LV | `@`, `@home`, `@pkg` at `/var/cache/pacman/pkg`, `@log`, `@swap`; `noatime,compress=zstd:3` |
+| loki | 1 GiB FAT32 ESP `/boot/efi`; 1 GiB ext4 `/boot`; LUKS2 → LVM → one Btrfs LV | `@`, `@home`, `@pkg` at `/var/cache/pacman/pkg`, `@log`, `@swap`; `noatime,compress=zstd:3` |
 
 Both use the fixed mapper `xcloud_root_crypt`. Loki keeps its former package-cache
 mount even though Debian does not use it. `@swap` gets directory attribute `+C`

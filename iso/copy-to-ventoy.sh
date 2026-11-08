@@ -63,7 +63,7 @@ mountpoints=$(lsblk -nro MOUNTPOINTS -- "$parent")
 # This checked libvirt/XML inspection fails closed and always precedes mounting.
 sudo -n python3 "$here/usb-in-use.py" "$parent"
 
-theme_source=/opt/xcloud/claude/ventoy/stick-tree/ventoy/theme/xcloud
+theme_source=/opt/xcloud/claude/xcloud/projects/ventoy/stick-tree/ventoy/theme/xcloud
 work=$(mktemp -d)
 mountpoint=$work/media
 read_mount_state() {
