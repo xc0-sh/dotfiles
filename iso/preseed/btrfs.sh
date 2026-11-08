@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC3028
 # Installer-side adaptation of fenrir's proven @rootfs rename/top-level snapshot
 # approach. Only the authorized OS volume is used; never discover/format data.
 set -eu
@@ -56,19 +57,24 @@ case "${1:-}" in
 esac
 # shellcheck source=/dev/null
 . /xc0/install.conf
+exec >> /target/root/xc0-btrfs-progress.log 2>&1
+progress() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+progress "started host=$HOSTNAME layout=$LAYOUT"
 case "$LAYOUT:$PROFILE:$MARIUS_UID:$MARIUS_GID:$XCLOUD_UID:$XCLOUD_GID" in
     loki:testing:1001:1001:1000:1000|thor:stable:1001:1001:1000:1000) : ;;
     *) die 'unapproved host policy' ;;
 esac
 layout "$LAYOUT"
+progress 'host policy accepted'
 sh -eu /xc0/select-disk.sh --validate-authorized
-exec >> /tmp/xc0-btrfs.log 2>&1
+progress 'disk authorization revalidated'
 disk=$(cut -d'|' -f1 /tmp/xc0-authorized)
 [ -b "$disk" ] || die 'missing authorized OS disk'
 record=$(awk '$5 == "/target" {for (i=7; i<=NF; i++) if ($i == "-") {print $(i+1), $(i+2), $4; n++}} END {if (n != 1) exit 1}' /proc/self/mountinfo)
 IFS=' ' read -r fs root_device source_root <<EOF
 $record
 EOF
+progress "root mount parsed fs=$fs device=$root_device source=$source_root"
 if [ "$fs" != btrfs ] || [ ! -b "$root_device" ]; then
     die 'target root is not Btrfs'
 fi
@@ -78,12 +84,14 @@ case "$source_root" in /|/@rootfs|/@) : ;; *) die 'unexpected installed root sub
 lv_names=$(in-target --pass-stdout lvs --noheadings -o lv_name xcloud_vg)
 lv_names=$(printf '%s' "$lv_names" | tr -d '[:space:]')
 [ "$lv_names" = root ] || die 'expected exactly one root LV'
+progress 'root LV identity validated'
 if [ "$source_root" = / ]; then
     # A snapshot does not include nested subvolume contents. Never silently
     # accept an ID-5 tree whose descendants would turn into empty placeholders.
     descendants=$(in-target --pass-stdout btrfs subvolume list /)
     [ -z "$descendants" ] || die 'top-level root contains unsupported nested subvolumes'
 fi
+progress "root LV validated source_subvolume=$source_root"
 esp_device=$(awk -v p="/target$esp_mount" '$2 == p && $3 == "vfat" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
 boot_device=''
 if [ "$LAYOUT" = thor ]; then
@@ -94,6 +102,7 @@ for device in "$esp_device" ${boot_device:+"$boot_device"}; do
     parent=$(in-target --pass-stdout lsblk -ndo PKNAME -- "$device")
     [ "$(readlink -f "/dev/$parent")" = "$(readlink -f "$disk")" ] || die 'boot partition is not on the authorized disk'
 done
+progress "boot partitions validated esp=$esp_device boot=${boot_device:-none}"
 work=$(mktemp -d /mnt/xc0-reshape.XXXXXX)
 top=$work/top
 mkdir "$top" "$work/park"
@@ -101,6 +110,7 @@ top_mounted=false copy_mounted=false
 cleanup() {
     result=$?
     trap - EXIT HUP INT TERM
+    progress "reshape cleanup status=$result"
     if [ "$copy_mounted" = true ]; then umount "$top/@/mnt/xc0-subvol" || result=1; fi
     for parked in "$work"/park/*; do
         [ -e "$parked" ] || continue
@@ -169,6 +179,7 @@ for pair in $subvolumes; do
     [ ! -e "$top/$sv" ] || die 'destination subvolume already exists'
     btrfs subvolume create "$top/$sv"
 done
+progress 'root and sibling subvolumes created'
 
 for pair in $subvolumes; do
     sv=${pair%%:*} mp=${pair#*:}
@@ -196,6 +207,7 @@ done
 umount "$top"
 top_mounted=false
 mount -o "subvol=@,$options" "$root_device" /target
+progress 'root remounted on @; mounting sibling subvolumes'
 for pair in $subvolumes; do
     sv=${pair%%:*} mp=${pair#*:}
     mkdir -p "/target$mp"
@@ -239,6 +251,7 @@ for path in /dev /proc /sys /run; do
 done
 cat "$work/fstab" "$work/media.fstab" > /target/etc/fstab
 chmod 0644 /target/etc/fstab
+progress 'target subvolumes and UUID fstab installed'
 
 # The initramfs cryptroot hook needs the configured name to be ACTIVE too.
 if [ "$old_crypt" != xcloud_root_crypt ]; then
@@ -251,5 +264,6 @@ chmod 0600 /target/etc/crypttab
 install -d -m 0755 /target/var/lib/xc0
 printf '%s\n' "$LAYOUT" > /target/var/lib/xc0/layout
 chmod 0644 /target/var/lib/xc0/layout
-cp /tmp/xc0-btrfs.log /target/var/log/xc0-btrfs.log
+progress 'fixed crypttab mapper and UUID layout prepared'
+cp /target/root/xc0-btrfs-progress.log /target/var/log/xc0-btrfs.log
 echo 'Btrfs layout and live LUKS mapping prepared; boot verification follows in-target.'
