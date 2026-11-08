@@ -24,11 +24,15 @@ esp=$(awk -v p="$esp_mount" '$2 == p && $3 == "vfat" {print $1; n++} END {if (n 
 check_partition() {
     parent=$(in-target --pass-stdout lsblk -ndo PKNAME -- "$1")
     [ "$(readlink -f "/dev/$parent")" = "$(readlink -f "$disk")" ]
-    [ "$(in-target --pass-stdout blockdev --getsize64 "$1")" = 1073741824 ]
+    size=$(in-target --pass-stdout blockdev --getsize64 "$1")
+    case "$size" in ''|*[!0-9]*) return 1 ;; esac
+    # partman may align the second partition up by one MiB. Require at
+    # least 1 GiB and allow at most 4 MiB of alignment overhead.
+    [ "$size" -ge 1073741824 ] && [ "$size" -le 1077936128 ]
 }
 [ "$(in-target --pass-stdout blkid -p -s PTTYPE -o value "$disk")" = gpt ]
 check_partition "$esp"
-printf 'GPT and exact 1 GiB ESP validated: %s\n' "$esp"
+printf 'GPT and approximately 1 GiB ESP validated: %s\n' "$esp"
 boot=$(awk '$2 == "/target/boot" && $3 == "ext4" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
 check_partition "$boot"
 printf '%s /boot partition validated: %s\n' "$LAYOUT" "$boot"

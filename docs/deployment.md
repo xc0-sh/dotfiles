@@ -55,8 +55,8 @@ The OS disk is GPT with no disk-backed swap:
   no swapfile or pacman setup is created.
 
 Both use mapper `xcloud_root_crypt`. The partition recipe requests 1075 decimal MB
-for aligned 1 GiB boot partitions; a pre-kernel check requires exactly 1,073,741,824
-bytes on the authorized OS disk. A VM rehearsal measured that 1074 MB produced
+for aligned 1 GiB boot partitions; a pre-kernel check requires at least 1,073,741,824
+bytes and permits up to 4 MiB alignment overhead on the authorized OS disk. A VM rehearsal measured that 1074 MB produced
 only 1,072,693,248 bytes (1023 MiB), so that request is rejected. An earlier
 Loki rehearsal showed dpkg cannot create kernel backup hard links on FAT; Loki
 therefore uses ext4 `/boot`, while the ESP remains at `/boot/efi`.

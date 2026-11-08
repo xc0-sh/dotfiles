@@ -233,6 +233,8 @@ class BootPreparationFixtureTests(unittest.TestCase):
                 elif tool == 'blockdev' and args[0] == '--getsize64':
                     if Path(args[-1]).name == os.environ.get('XC0_BAD_PARTITION'):
                         print('1072693248')
+                    elif Path(args[-1]).name == 'boot-device':
+                        print(os.environ.get('XC0_BOOT_SIZE', '1073741824'))
                     else:
                         print('1073741824')
                 elif tool == 'blkid' and args == ['-p', '-s', 'PTTYPE', '-o', 'value', str(root / 'disk')]:
@@ -289,7 +291,7 @@ class BootPreparationFixtureTests(unittest.TestCase):
                 result = self.run_hook()
                 self.assertEqual(result.returncode, 0, result.stderr)
                 log = (self.target / "var/log/xc0-boot-prepare.log").read_text()
-                self.assertIn("exact 1 GiB ESP validated", log)
+                self.assertIn("approximately 1 GiB ESP validated", log)
                 self.assertIn(f"{host} /boot partition validated", log)
                 events = self.events()
                 self.assertEqual(sum(1 for event in events if event[0] == "in-target"
@@ -299,6 +301,14 @@ class BootPreparationFixtureTests(unittest.TestCase):
                 self.assertIn("/boot/efi vfat", (self.target / "etc/fstab").read_text())
                 (self.root / "commands.jsonl").unlink(missing_ok=True)
                 (self.target / "var/log/xc0-boot-prepare.log").unlink(missing_ok=True)
+
+    def test_boot_alignment_overhead_is_bounded(self):
+        for size, accepted in ((1073741823, False), (1073741824, True),
+                               (1074790400, True), (1077936128, True),
+                               (1077936129, False), ('not-a-number', False)):
+            with self.subTest(size=size):
+                result = self.run_hook(XC0_BOOT_SIZE=str(size))
+                self.assertEqual(result.returncode == 0, accepted)
 
 
 class AccountFixtureTests(unittest.TestCase):
