@@ -78,8 +78,7 @@ fi
 case "$source_root" in /|/@rootfs|/@) : ;; *) die 'unexpected installed root subvolume' ;; esac
 [ "$source_root" != /@ ] || die 'layout already reshaped; refusing a second migration'
 lv_names=$(in-target --pass-stdout lvs --noheadings -o lv_name xcloud_vg)
-lv_names=$(printf '%s' "$lv_names" | tr -d '[:space:]')
-[ "$lv_names" = root ] || die 'expected exactly one root LV'
+printf '%s\n' "$lv_names" | awk 'NF { if (NF != 1 || $1 != "root") exit 1; n++ } END { if (n != 1) exit 1 }' || die 'expected exactly one root LV'
 progress 'root LV identity validated'
 if [ "$source_root" = / ]; then
     # A snapshot does not include nested subvolume contents. Never silently
@@ -89,10 +88,7 @@ if [ "$source_root" = / ]; then
 fi
 progress "root LV validated source_subvolume=$source_root"
 esp_device=$(awk -v p="/target$esp_mount" '$2 == p && $3 == "vfat" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
-boot_device=''
-if [ "$LAYOUT" = thor ]; then
-    boot_device=$(awk '$2 == "/target/boot" && $3 == "ext4" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
-fi
+boot_device=$(awk '$2 == "/target/boot" && $3 == "ext4" {print $1; n++} END {if (n != 1) exit 1}' /proc/mounts)
 for device in "$esp_device" ${boot_device:+"$boot_device"}; do
     [ -b "$device" ] || die 'missing boot device'
     parent=$(in-target --pass-stdout lsblk -ndo PKNAME -- "$device")

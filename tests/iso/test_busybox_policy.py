@@ -1,4 +1,5 @@
 import unittest
+import subprocess
 from pathlib import Path
 
 
@@ -6,6 +7,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class BusyBoxPolicyTests(unittest.TestCase):
+    def test_lvm_list_requires_exactly_one_root_even_with_padding(self):
+        script = (ROOT / 'iso/preseed/btrfs.sh').read_text()
+        self.assertNotIn("tr -d '[:space:]'", script)
+        command = '''awk 'NF { if (NF != 1 || $1 != "root") exit 1; n++ } END { if (n != 1) exit 1 }' '''
+        for output, accepted in [('  root\n', True), ('root\nroot\n', False),
+                                 ('root\nswap\n', False), ('\n', False)]:
+            with self.subTest(output=output):
+                result = subprocess.run(command, shell=True, input=output, text=True)
+                self.assertEqual(result.returncode == 0, accepted)
+
     def test_preseed_late_command_has_no_escaped_newlines(self):
         lines = (ROOT / 'iso/preseed/base.cfg').read_text().splitlines()
         commands = [line for line in lines if line.startswith('d-i preseed/late_command string ')]
