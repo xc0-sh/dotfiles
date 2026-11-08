@@ -57,7 +57,7 @@ remain physical acceptance checks even when every VM gate passes.
 
 The new layout implementation also needs fresh multi-disk UEFI rehearsals with
 an existing ESP and LVM/MD/data sentinels on the non-target file-backed disk.
-Check strict nested-mount restoration, loki's signed GRUB diversion, and a
+Check strict nested-mount restoration, normal Debian signed-GRUB handling, and a
 testing kernel upgrade followed by encrypted reboot. Model-confirm deliberately
 rejects QEMU: its exact production image must refuse there, not be treated as
 having completed a physical thor installation. No real VM layout pass is claimed

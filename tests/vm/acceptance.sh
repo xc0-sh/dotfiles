@@ -51,7 +51,9 @@ if [ -n "$expected_host" ]; then
     else
         level=3
         pairs='@:/ @home:/home @pkg:/var/cache/pacman/pkg @log:/var/log @swap:/swap'
-        esp=/boot
+        esp=/boot/efi
+        [ "$(findmnt -rn -M /boot -o FSTYPE)" = ext4 ]
+        [ "$(blockdev --getsize64 "$(findmnt -rn -M /boot -o SOURCE)")" = 1073741824 ]
         lsattr -d /swap | awk '$1 !~ /C/ {exit 1}'
         [ ! -e /swap/swapfile ]
     fi
