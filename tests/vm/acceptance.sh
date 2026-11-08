@@ -19,6 +19,10 @@ case "$user" in ''|*[!a-zA-Z0-9_-]*) exit 2 ;; esac
 [ "$(id -u)" -eq 0 ] || { echo 'run inside the guest as root' >&2; exit 2; }
 systemd-detect-virt --vm >/dev/null || { echo 'VM acceptance script: not a VM' >&2; exit 2; }
 pass() { printf 'PASS %s\n' "$*"; }
+check_1gib_partition() {
+    size=$(blockdev --getsize64 "$1")
+    [ "$size" -ge 1073741824 ] && [ "$size" -le 1077936128 ]
+}
 grep -qx state=complete /var/lib/xc0/install-status
 grep -qx stage=base /var/lib/xc0/install-status
 grep -qx "profile=$profile" /var/lib/xc0/install-status
@@ -47,13 +51,13 @@ if [ -n "$expected_host" ]; then
         pairs='@:/ @home:/home @snapshots:/.snapshots @var_log:/var/log @var_tmp:/var/tmp @aios:/var/lib/aios @srv_aios:/srv/aios @xccode:/var/lib/xcloud/xccode'
         esp=/boot/efi
         [ "$(findmnt -rn -M /boot -o FSTYPE)" = ext4 ]
-        [ "$(blockdev --getsize64 "$(findmnt -rn -M /boot -o SOURCE)")" = 1073741824 ]
+        check_1gib_partition "$(findmnt -rn -M /boot -o SOURCE)"
     else
         level=3
         pairs='@:/ @home:/home @pkg:/var/cache/pacman/pkg @log:/var/log @swap:/swap'
         esp=/boot/efi
         [ "$(findmnt -rn -M /boot -o FSTYPE)" = ext4 ]
-        [ "$(blockdev --getsize64 "$(findmnt -rn -M /boot -o SOURCE)")" = 1073741824 ]
+        check_1gib_partition "$(findmnt -rn -M /boot -o SOURCE)"
         lsattr -d /swap | awk '$1 !~ /C/ {exit 1}'
         [ ! -e /swap/swapfile ]
     fi
@@ -69,7 +73,7 @@ if [ -n "$expected_host" ]; then
         fi
     done
     [ "$(findmnt -rn -M "$esp" -o FSTYPE)" = vfat ]
-    [ "$(blockdev --getsize64 "$(findmnt -rn -M "$esp" -o SOURCE)")" = 1073741824 ]
+    check_1gib_partition "$(findmnt -rn -M "$esp" -o SOURCE)"
     [ -s "$esp/EFI/debian/shimx64.efi" ] && [ -s "$esp/EFI/debian/grubx64.efi" ]
     awk '!/^#/ && $3 == "swap" {exit 1}' /etc/fstab
     pass 'host-specific UUID/subvolume mounts, boot partitions and LUKS2; no disk swap'

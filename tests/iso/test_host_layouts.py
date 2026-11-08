@@ -99,6 +99,14 @@ class HostLayoutTests(unittest.TestCase):
         base = (PRESEED / "base.cfg").read_text()
         self.assertLess(base.index("sh -eu /xc0/btrfs.sh"), base.index("in-target sh /root/xc0-late.sh"))
 
+    def test_vm_acceptance_checks_aligned_gib_boot_and_esp_sizes(self):
+        acceptance = (ROOT / "tests/vm/acceptance.sh").read_text()
+        self.assertIn("size=$(blockdev --getsize64 \"$1\")", acceptance)
+        self.assertIn("-ge 1073741824", acceptance)
+        self.assertIn("-le 1077936128", acceptance)
+        self.assertEqual(acceptance.count("check_1gib_partition \"$(findmnt"), 3)
+        self.assertIn('esp=/boot/efi', acceptance)
+
 
 class MetadataCopyTests(unittest.TestCase):
     def setUp(self):
