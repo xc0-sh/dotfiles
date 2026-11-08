@@ -7,6 +7,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class BusyBoxPolicyTests(unittest.TestCase):
+    def test_btrfs_log_does_not_hold_target_open(self):
+        script = (ROOT / 'iso/preseed/btrfs.sh').read_text()
+        self.assertIn('progress_log=/tmp/xc0-btrfs-progress.log', script)
+        self.assertNotIn('exec >> /target/', script)
+
     def test_lvm_list_requires_exactly_one_root_even_with_padding(self):
         script = (ROOT / 'iso/preseed/btrfs.sh').read_text()
         self.assertNotIn("tr -d '[:space:]'", script)

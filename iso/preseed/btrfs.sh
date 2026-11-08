@@ -53,7 +53,10 @@ case "${1:-}" in
 esac
 # shellcheck source=/dev/null
 . /xc0/install.conf
-exec >> /target/root/xc0-btrfs-progress.log 2>&1
+# Keep the log outside /target: an open descriptor on the target prevents
+# unmounting it during the reshape.
+progress_log=/tmp/xc0-btrfs-progress.log
+exec >> "$progress_log" 2>&1
 progress() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 progress "started host=$HOSTNAME layout=$LAYOUT"
 case "$LAYOUT:$PROFILE:$MARIUS_UID:$MARIUS_GID:$XCLOUD_UID:$XCLOUD_GID" in
@@ -111,7 +114,12 @@ cleanup() {
         fi
     done
     if [ "$top_mounted" = true ]; then umount "$top" || result=1; fi
-    if [ "$result" -eq 0 ]; then rm -rf -- "$work"; else echo "reshape blocked; diagnostics retained: $work" >&2; fi
+    if [ "$result" -eq 0 ]; then rm -rf -- "$work"; else
+        echo "reshape blocked; diagnostics retained: $work" >&2
+        if awk '$2 == "/target" {found=1} END {exit !found}' /proc/mounts; then
+            cp "$progress_log" /target/root/xc0-btrfs-progress.log || :
+        fi
+    fi
     exit "$result"
 }
 trap cleanup EXIT
@@ -257,5 +265,6 @@ install -d -m 0755 /target/var/lib/xc0
 printf '%s\n' "$LAYOUT" > /target/var/lib/xc0/layout
 chmod 0644 /target/var/lib/xc0/layout
 progress 'fixed crypttab mapper and UUID layout prepared'
-cp /target/root/xc0-btrfs-progress.log /target/var/log/xc0-btrfs.log
+cp "$progress_log" /target/root/xc0-btrfs-progress.log
+cp "$progress_log" /target/var/log/xc0-btrfs.log
 echo 'Btrfs layout and live LUKS mapping prepared; boot verification follows in-target.'
