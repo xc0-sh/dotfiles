@@ -68,6 +68,13 @@ post-install work.
   initramfs cryptroot and GRUB rootflags are verified before completion.
 - The marker explicitly says `stage=base`; it does not claim desktop configuration.
 - `/etc/xc0-next-steps` records the reviewed Git commit and post-install commands.
+- `FIRST-RUN.sh` is the Thor post-install orchestrator in that exact reviewed
+  checkout. It stages a user-selected signed xccode release, runs the existing
+  desktop bootstrap's dry-run before apply, and refuses to proceed until the
+  Snapper APT hook and manually prepared, signed NVIDIA 595 stack are ready.
+  It does not install drivers, enroll MOK, toggle NVIDIA APT sources, or handle
+  provider secrets. Install xccode before adding the NVIDIA repository; after
+  manual driver/MOK preparation use `--no-xccode` for the desktop stage.
 - An explicitly separate `vm-test` mode may embed throwaway secrets, but only a
   QEMU VM with its designated virtual disk can use it. Never publish those ISOs.
 

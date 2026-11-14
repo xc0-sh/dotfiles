@@ -22,7 +22,7 @@ The release path is deliberately different from the disposable `vm-test` path:
 | Target disk | loki: exact serial and DMI; thor: attended model-confirm; both require typed live-serial erase approval | QEMU, `/dev/vda`, serial `XC0_TEST_DISK` only |
 | Login/LUKS secrets in ISO | no: entered at the installer | private throwaway credentials only |
 | SSH trust | optional explicit public-key file | optional explicit test public-key file |
-| Sudo | normal authenticated sudo group | disposable test-only passwordless sudo |
+| Sudo | normal authenticated sudo group | authenticated sudo with disposable test credentials |
 | Completion | power off; remove installer before first disk boot | power off; switch VM boot order |
 
 No test VM may attach the host NVMe or any writable physical block device.
@@ -203,7 +203,14 @@ a directory still reported as mounted.
    Everything on that selected disk is lost; no data-preservation claim is made.
 5. When the installer powers off, remove the USB, boot the internal disk and
    unlock LUKS. This is a base text/SSH login, not a desktop yet.
-6. Read `/etc/xc0-next-steps`, clone the reviewed Git source and run the scripts.
+6. Read `/etc/xc0-next-steps`, clone the exact reviewed Git commit and run
+   the host-specific post-install commands as `marius`:
+   - **loki:** `sudo bash setup/bootstrap.sh --profile loki --user marius --dry-run`,
+     then the same command without `--dry-run` after reviewing its output.
+   - **thor:** `./FIRST-RUN.sh --check`. Resolve its Snapper, signed xccode
+     release/key, and manual NVIDIA/MOK prerequisites before `--apply`. The script
+     runs the existing desktop bootstrap dry-run first and never enrolls MOK or
+     installs NVIDIA packages.
    Select Hyprland at the display manager after that separate step completes.
 
 If provisioning blocks, inspect `/target/var/log/xc0-install.log` from an

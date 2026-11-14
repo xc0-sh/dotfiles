@@ -3,8 +3,8 @@
 Run from the repository root, as the normal user:
 
 ```sh
-bash -n setup/bootstrap.sh setup/link-config.sh setup/session.sh
-shellcheck setup/bootstrap.sh setup/link-config.sh setup/session.sh config/desktop/uwsm/env tests/bootstrap/container-smoke.sh
+bash -n FIRST-RUN.sh setup/bootstrap.sh setup/link-config.sh setup/session.sh
+shellcheck FIRST-RUN.sh setup/bootstrap.sh setup/link-config.sh setup/session.sh config/desktop/uwsm/env tests/bootstrap/container-smoke.sh
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/bootstrap -v
 ```
 

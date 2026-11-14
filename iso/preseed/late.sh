@@ -69,9 +69,11 @@ fi
             ;;
         thor)
             printf '\nPREREQUISITE: separately prepare and verify the supported Debian NVIDIA driver/kernel pair.\n'
-            printf 'Do not acknowledge --nvidia-prepared until NVIDIA preparation is complete.\n'
-            printf '  sudo bash setup/bootstrap.sh --profile thor --user marius --nvidia-prepared --dry-run\n'
-            printf '  sudo bash setup/bootstrap.sh --profile thor --user marius --nvidia-prepared\n'
+            printf 'Configure Snapper root snapshots and its APT hook before any package transaction.\n'
+            printf 'NVIDIA branch pinning and physical MOK enrollment are operator steps; FIRST-RUN will verify them, not perform them.\n'
+            printf 'Install xccode before adding the NVIDIA APT source; after NVIDIA preparation rerun with --no-xccode.\n'
+            printf '  ./FIRST-RUN.sh --check\n'
+            printf '  ./FIRST-RUN.sh --apply\n'
             ;;
         *)
             printf '  sudo bash setup/bootstrap.sh --profile %s --user marius --dry-run\n' "$PROFILE"

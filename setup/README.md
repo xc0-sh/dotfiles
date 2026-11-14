@@ -40,6 +40,32 @@ bootstrap.sh --help
 
 The rest of this document describes the implementation and validation boundaries.
 
+## Thor first run
+
+On Thor, clone the exact full commit printed in `/etc/xc0-next-steps`, then run
+the repository-root `FIRST-RUN.sh` as `marius`:
+
+```sh
+./FIRST-RUN.sh --check
+./FIRST-RUN.sh --apply
+```
+
+The check requires a working root Snapper configuration and APT hook. Thor's
+595 NVIDIA branch pin, open DKMS module, Secure Boot MOK enrollment, and reboot
+remain manual hardware steps; the script verifies them but does not perform them.
+The desktop bootstrap also validates APT origins against its Debian-only policy;
+if NVIDIA's third-party repository is still visible to `apt-cache policy`, the
+script stops rather than relaxing that policy or toggling the repository.
+It installs xccode only from an explicit signed release selected at run time,
+after authenticated `gh` download and an out-of-band-confirmed signing-key
+fingerprint. Install xccode before adding the NVIDIA repository, as the host
+install order specifies. xccode provider secrets remain operator-entered. The
+desktop bootstrap still has its own dry-run and explicit apply confirmation.
+After manual NVIDIA preparation, rerun with `--no-xccode`; if its NVIDIA APT
+source is visible to `apt-cache policy`, prepare the approved temporary
+Debian-only package transaction manually and rerun. FIRST-RUN never disables
+or edits repository definitions.
+
 ## Package policy and session
 
 Only signed Debian apt repositories are used. Before installation, apt's loaded

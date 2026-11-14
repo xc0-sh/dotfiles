@@ -1324,14 +1324,15 @@ exit 0
                 result = self.run_late()
                 self.assertEqual(result.returncode, 0, result.stderr)
                 instructions = (self.root / "etc/xc0-next-steps").read_text()
-                command = f"sudo bash setup/bootstrap.sh --profile {profile} --user marius"
                 if hostname == "thor":
-                    command += " --nvidia-prepared"
-                    self.assertIn("PREREQUISITE", instructions)
-                    self.assertIn("NVIDIA driver/kernel pair", instructions)
-                    self.assertLess(instructions.index("PREREQUISITE"), instructions.index(command))
-                else:
-                    self.assertNotIn("--nvidia-prepared", instructions)
+                    self.assertIn("./FIRST-RUN.sh --check\n", instructions)
+                    self.assertIn("./FIRST-RUN.sh --apply\n", instructions)
+                    self.assertIn("Snapper root snapshots", instructions)
+                    self.assertIn("physical MOK enrollment", instructions)
+                    self.assertNotIn("setup/bootstrap.sh --profile thor", instructions)
+                    continue
+                command = f"sudo bash setup/bootstrap.sh --profile {profile} --user marius"
+                self.assertNotIn("--nvidia-prepared", instructions)
                 self.assertIn(command + " --dry-run\n", instructions)
                 self.assertIn(command + "\n", instructions)
                 self.assertLess(instructions.index(command + " --dry-run\n"), instructions.index(command + "\n"))
